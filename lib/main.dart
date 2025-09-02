@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/features/Home/pages/homepage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,21 +16,25 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
       home: DefaultTabController(
-        length: 4,
+        length: 3,
         child: Scaffold(
           appBar: AppBar(
             title: Text('My Attendance'),
             bottom: TabBar(
               tabs: [
                 Tab(text: 'Home'),
-                Tab(text: 'Scan'),
                 Tab(text: 'Schedule'),
                 Tab(text: 'Settings'),
               ],
             ),
           ),
           body: TabBarView(
-            children: [Text('Home'), Text('Settings'), Text('Profile')],
+            children: [
+              Homepage(),
+              Text('Settings'),
+              Text('Profile'),
+              Text('Settings'),
+            ],
           ),
         ),
       ),
@@ -50,15 +55,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   // TRY THIS: Try changing the color here to a specific color (to
-      //   // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-      //   // change color while the other colors stay the same.
-      //   backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      //   // Here we take the value from the MyHomePage object that was created by
-      //   // the App.build method, and use it to set our appbar title.
-      //   title: Text(widget.title),
-      // ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
