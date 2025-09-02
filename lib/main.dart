@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Home/pages/homepage.dart';
+import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,26 +17,24 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
-      home: DefaultTabController(
-        length: 3,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text('My Attendance'),
-            bottom: TabBar(
-              tabs: [
-                Tab(text: 'Home'),
-                Tab(text: 'Schedule'),
-                Tab(text: 'Settings'),
-              ],
+      home: ChangeNotifierProvider(
+        create: (_) => QrDataProvider(),
+        child: DefaultTabController(
+          length: 3,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text('My Attendance'),
+              bottom: TabBar(
+                tabs: [
+                  Tab(text: 'Home'),
+                  Tab(text: 'Schedule'),
+                  Tab(text: 'Settings'),
+                ],
+              ),
             ),
-          ),
-          body: TabBarView(
-            children: [
-              Homepage(),
-              Text('Settings'),
-              Text('Profile'),
-              Text('Settings'),
-            ],
+            body: TabBarView(
+              children: [Homepage(), Text('Schedule'), Text('Settings')],
+            ),
           ),
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/ScanFeature/widgets/qr_generator.dart';
+import 'package:myattendance/features/QRFeature/widgets/qr_generator.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
