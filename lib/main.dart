@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Home/pages/homepage.dart';
+import 'package:myattendance/features/QRFeature/pages/qr_read_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -33,7 +34,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
             body: TabBarView(
-              children: [Homepage(), Text('Schedule'), Text('Settings')],
+              children: [Homepage(), QrReadPage(), Text('Settings')],
             ),
           ),
         ),
