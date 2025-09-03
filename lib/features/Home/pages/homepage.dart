@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/QRFeature/widgets/qr_generator.dart';
+
+import 'package:myattendance/features/QRFeature/widgets/qrcode.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -11,6 +12,6 @@ class Homepage extends StatefulWidget {
 class _HomePageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: QrGenerator()));
+    return const Scaffold(body: Center(child: Qrcode()));
   }
 }

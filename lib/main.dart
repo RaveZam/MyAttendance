@@ -3,6 +3,7 @@ import 'package:myattendance/features/Home/pages/homepage.dart';
 import 'package:myattendance/features/QRFeature/pages/qr_read_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -39,7 +40,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const Homepage(),
     const QrReadPage(),
-    const Center(child: Text('Settings')),
+    const Text("Settings"),
   ];
 
   @override
