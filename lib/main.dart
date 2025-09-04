@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/features/Home/pages/homepage.dart';
 import 'package:myattendance/features/QRFeature/pages/qr_read_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
+import 'package:myattendance/features/auth/pages/auth_page.dart';
 import 'package:provider/provider.dart';
-import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
+// import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://crabanoguftvirdjsabh.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyYWJhbm9ndWZ0dmlyZGpzYWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NTMzMDQsImV4cCI6MjA3MjUyOTMwNH0.LAsaiYmX_ivFc7uLYxp4zU3CfzACspSa4YZq7OyVgn8',
+  );
+
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -14,15 +23,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    debugPrint('initialSession: $session');
     return MaterialApp(
       title: 'My Attendance',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
-      home: ChangeNotifierProvider(
-        create: (_) => QrDataProvider(),
-        child: const MainScreen(),
-      ),
+      home: session == null
+          ? const AuthPage()
+          : ChangeNotifierProvider(
+              create: (_) => QrDataProvider(),
+              child: const MainScreen(),
+            ),
     );
   }
 }

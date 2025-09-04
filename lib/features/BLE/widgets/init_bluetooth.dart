@@ -4,9 +4,9 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothHelper {
   static Future<void> initBluetooth() async {
-    // 1. Check if device supports Bluetooth
+  
     if (await FlutterBluePlus.isSupported == false) {
-      print("❌ Bluetooth not supported by this device");
+      debugPrint("❌ Bluetooth not supported by this device");
       return;
     }
 

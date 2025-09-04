@@ -12,6 +12,12 @@ class Homepage extends StatefulWidget {
 class _HomePageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Qrcode()));
+    return const Scaffold(
+      body: Center(
+        child:
+            //  Qrcode()
+            Text("Homepage"),
+      ),
+    );
   }
 }

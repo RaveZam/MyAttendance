@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class TeacherScannerPage extends StatefulWidget {
-  final String qrPayload; // 👈 pass the QR data here (from QR scanner page)
+  final String qrPayload;
 
   const TeacherScannerPage({super.key, required this.qrPayload});
 
