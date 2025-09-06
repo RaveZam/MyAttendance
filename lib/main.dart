@@ -3,6 +3,7 @@ import 'package:myattendance/features/Home/pages/homepage.dart';
 import 'package:myattendance/features/QRFeature/pages/qr_read_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
 import 'package:myattendance/features/auth/pages/auth_page.dart';
+import 'package:myattendance/features/Settings/pages/settings_page.dart';
 import 'package:provider/provider.dart';
 // import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,12 +25,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = Supabase.instance.client.auth.currentSession;
-    debugPrint('initialSession: $session');
+    debugPrint('session: $session');
     return MaterialApp(
       title: 'My Attendance',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
       ),
+      routes: {
+        '/auth': (context) => const AuthPage(),
+        '/home': (context) => const Homepage(),
+        '/main': (context) => ChangeNotifierProvider(
+          create: (_) => QrDataProvider(),
+          child: const MainScreen(),
+        ),
+      },
       home: session == null
           ? const AuthPage()
           : ChangeNotifierProvider(
@@ -53,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const Homepage(),
     const QrReadPage(),
-    const Text("Settings"),
+    const SettingsPage(),
   ];
 
   @override

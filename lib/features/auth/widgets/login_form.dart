@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -24,22 +25,45 @@ class _LoginFormState extends State<LoginForm> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+    try {
+      setState(() {
+        _isLoading = true;
+      });
 
-    setState(() {
-      _isLoading = true;
-    });
+      final AuthResponse res = await Supabase.instance.client.auth
+          .signInWithPassword(
+            email: _studentIDController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+      if (!mounted) return;
 
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login logic not implemented.'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    setState(() {
-      _isLoading = false;
-    });
+      if (res.user != null && res.session != null) {
+        Navigator.of(context).pushReplacementNamed('/main');
+      }
+    } catch (e) {
+      debugPrint('error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    // await Future<void>.delayed(const Duration(milliseconds: 300));
+    // if (!mounted) return;
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   const SnackBar(
+    //     content: Text('Login logic not implemented.'),
+    //     backgroundColor: Colors.orange,
+    //   ),
+    // );
+    // setState(() {
+    //   _isLoading = false;
+    // });
   }
 
   @override

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/features/auth/states/account_type_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterForm extends StatefulWidget {
@@ -45,24 +47,31 @@ class _RegisterFormState extends State<RegisterForm> {
           'student_id': _studentIDController.text,
           'first_name': _firstNameController.text,
           'last_name': _lastNameController.text,
+          'account_type': Provider.of<AccountTypeHandler>(
+            context,
+            listen: false,
+          ).accountType,
         },
       );
+      if (!mounted) return;
+      if (authResponse.user != null && authResponse.session != null) {
+        Navigator.of(context).pushReplacementNamed('/main');
+      }
 
-      debugPrint('authResponse: $authResponse');
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('error: $e');
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Error registering!'),
           backgroundColor: Colors.redAccent,
         ),
       );
-      setState(() {
-        _isLoading = false;
-      });
     }
 
     // await Future<void>.delayed(const Duration(milliseconds: 300));
