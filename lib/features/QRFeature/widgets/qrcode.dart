@@ -15,9 +15,14 @@ class Qrcode extends StatefulWidget {
 class _QrcodeState extends State<Qrcode> {
   final classdata = {
     "class_code": "CS101",
+    "class_name": "Introduction to Computer Science",
     "class_session_id": "2025-09-03-10AM",
     "service_uuid": "12345678-1234-1234-1234-123456789abc",
     "char_uuid": "abcd1234-5678-90ab-cdef-1234567890ab",
+    "instructor_name": "John Facun",
+    "start_time": "10:00 AM",
+    "end_time": "11:00 AM",
+    "day": "Monday",
   };
 
   @override
