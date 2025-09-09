@@ -34,6 +34,12 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 
   Future<void> _handleRegister() async {
+    final accountType = Provider.of<AccountTypeHandler>(
+      context,
+      listen: false,
+    ).accountType;
+
+    debugPrint('accountType: $accountType');
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
@@ -55,7 +61,7 @@ class _RegisterFormState extends State<RegisterForm> {
       );
       if (!mounted) return;
       if (authResponse.user != null && authResponse.session != null) {
-        Navigator.of(context).pushReplacementNamed('/main');
+        Navigator.of(context).pushReplacementNamed('/home');
       }
 
       setState(() {
@@ -89,6 +95,11 @@ class _RegisterFormState extends State<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
+    final accountType = Provider.of<AccountTypeHandler>(
+      context,
+      listen: false,
+    ).accountType;
+    debugPrint('accountType from provider: $accountType');
     return Container(
       padding: const EdgeInsets.all(24.0),
       child: Form(
@@ -126,24 +137,26 @@ class _RegisterFormState extends State<RegisterForm> {
             ),
             const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _studentIDController,
-              decoration: const InputDecoration(
-                labelText: 'Student ID',
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
+            if (accountType == 'student') ...[
+              TextFormField(
+                controller: _studentIDController,
+                decoration: const InputDecoration(
+                  labelText: 'Student ID',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your Student ID';
+                  }
+                  if (value.length < 3) {
+                    return 'Student ID must be at least 3 characters';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your Student ID';
-                }
-                if (value.length < 3) {
-                  return 'Student ID must be at least 3 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
 
             // First Name Field
             TextFormField(

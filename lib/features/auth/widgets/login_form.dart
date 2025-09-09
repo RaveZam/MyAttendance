@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/features/auth/states/account_type_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginForm extends StatefulWidget {
@@ -38,7 +40,7 @@ class _LoginFormState extends State<LoginForm> {
       if (!mounted) return;
 
       if (res.user != null && res.session != null) {
-        Navigator.of(context).pushReplacementNamed('/main');
+        Navigator.pushNamed(context, '/home');
       }
     } catch (e) {
       debugPrint('error: $e');

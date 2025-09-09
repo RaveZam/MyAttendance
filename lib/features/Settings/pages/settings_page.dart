@@ -148,7 +148,7 @@ class _SettingsPageState extends State<SettingsPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Student ID: ${userMetadata['student_id'] ?? 'N/A'}',
+              '${userMetadata['account_type'] == 'student' ? 'Student ID' : 'Teacher Email'}: ${userMetadata['student_id'] ?? 'N/A'}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).primaryColor,
                 fontWeight: FontWeight.w500,
