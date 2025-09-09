@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/Home/pages/homepage.dart';
+import 'package:myattendance/features/Home/pages/teacher_home_page.dart';
 import 'package:myattendance/features/QRFeature/widgets/qr_generator.dart';
 import 'package:myattendance/features/Settings/pages/settings_page.dart';
 
@@ -14,7 +14,7 @@ class _TeacherMainScreenState extends State<TeacherMainScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    const Homepage(),
+    const TeacherHomePage(),
     const QrGenerator(),
     const SettingsPage(),
   ];

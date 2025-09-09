@@ -12,9 +12,22 @@ class TeacherScannerPage extends StatefulWidget {
   State<TeacherScannerPage> createState() => _TeacherScannerPageState();
 }
 
+class StudentData {
+  final String studentId;
+  final String studentName;
+
+  StudentData({required this.studentId, required this.studentName});
+  @override
+  String toString() {
+    return 'StudentData(studentId: $studentId, studentName: $studentName)';
+  }
+}
+
 class _TeacherScannerPageState extends State<TeacherScannerPage> {
   late final String sessionId;
   late final String classCode;
+
+  var studentData = [];
 
   @override
   void initState() {
@@ -43,10 +56,23 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
               decoded.contains("CLASS:$classCode")) {
             final parts = decoded.split("|");
             final studentId = parts[0].replaceFirst("STUDENT:", "");
+            final studentName = parts[1].replaceFirst("NAME:", "");
 
-            debugPrint(
-              "🎓 Student $studentId joined $classCode - $sessionId ✅",
+            bool studentExists = studentData.any(
+              (student) => student.studentId == studentId,
             );
+
+            if (studentExists) {
+              return;
+            } else {
+              studentData.add(
+                StudentData(studentId: studentId, studentName: studentName),
+              );
+              debugPrint(
+                "🎓 Student $studentId joined $classCode - $sessionId ✅",
+              );
+              debugPrint("studentData: $studentData");
+            }
           }
         }
       }

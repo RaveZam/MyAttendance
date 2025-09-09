@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myattendance/features/Home/pages/homepage.dart';
+import 'package:myattendance/features/Home/pages/student_home_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
 import 'package:myattendance/features/Student/pages/student_main_screen.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +26,7 @@ class StudentApp extends StatelessWidget {
       ),
       routes: {
         '/auth': (context) => const AuthPage(),
-        '/home': (context) => const Homepage(),
+        '/home': (context) => const StudentHomepage(),
         '/student/main': (context) => ChangeNotifierProvider(
           create: (_) => QrDataProvider(),
           child: const StudentMainScreen(),
