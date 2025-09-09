@@ -63,6 +63,7 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
             );
 
             if (studentExists) {
+              debugPrint("Student $studentId already exists");
               return;
             } else {
               studentData.add(

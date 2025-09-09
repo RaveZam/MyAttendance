@@ -53,14 +53,14 @@ class _QrReaderState extends State<QrReader> {
             controller: controller,
             scanWindow: scanWindow,
             onDetect: (capture) async {
-              if (scanSuccess) return;
+              // if (scanSuccess) return;
 
               final rawQr = capture.barcodes.first.rawValue;
 
               debugPrint("QR code detected: ${jsonDecode(rawQr ?? '')}");
 
               if (rawQr != null && scanSuccess == false) {
-                scanSuccess = true;
+                // scanSuccess = true;
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -79,10 +79,8 @@ class _QrReaderState extends State<QrReader> {
                   classdata['end_time'],
                 );
 
-                final studentId =
-                    userMetadata?['student_id'] ?? ''; // from login/profile
-                final studentName =
-                    userMetadata?['first_name'] ?? ''; // from login/profile
+                final studentId = userMetadata?['student_id'] ?? '';
+                final studentName = userMetadata?['first_name'] ?? '';
                 final payload =
                     "STUDENT:$studentId|NAME:$studentName|SESSION:${classdata['class_session_id']}|CLASS:${classdata['class_code']}";
 

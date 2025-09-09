@@ -11,12 +11,6 @@ class QrReadPage extends StatefulWidget {
 class _QrReadPageState extends State<QrReadPage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child:
-            //  QrReader()
-            Text("QR Read Page"),
-      ),
-    );
+    return Scaffold(body: Center(child: Text("QR Read Page")));
   }
 }

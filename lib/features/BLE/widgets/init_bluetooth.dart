@@ -4,7 +4,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothHelper {
   static Future<void> initBluetooth() async {
-  
     if (await FlutterBluePlus.isSupported == false) {
       debugPrint("❌ Bluetooth not supported by this device");
       return;
@@ -14,13 +13,13 @@ class BluetoothHelper {
     var subscription = FlutterBluePlus.adapterState.listen((
       BluetoothAdapterState state,
     ) {
-      print("Bluetooth state: $state");
+      debugPrint("Bluetooth state: $state");
 
       if (state == BluetoothAdapterState.on) {
-        print("✅ Bluetooth is ON, ready to scan.");
+        debugPrint("✅ Bluetooth is ON, ready to scan.");
         // you can trigger scanning here if you want
       } else {
-        print("⚠️ Bluetooth is OFF or unavailable.");
+        debugPrint("⚠️ Bluetooth is OFF or unavailable.");
       }
     });
 

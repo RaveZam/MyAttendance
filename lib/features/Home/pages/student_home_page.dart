@@ -26,9 +26,9 @@ class _StudentHomePageState extends State<StudentHomepage> {
             ),
           ),
           child: SafeArea(
-            child: qrDataProvider.classCode.isEmpty
-                ? _buildQRScanningSection()
-                : _buildScannedSection(),
+            // child: qrDataProvider.classCode.isEmpty
+            child: _buildQRScanningSection(),
+            // : _buildScannedSection(),
           ),
         );
       },

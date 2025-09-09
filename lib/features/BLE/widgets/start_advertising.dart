@@ -32,13 +32,13 @@ class _StudentAdvertiserPageState extends State<StudentAdvertiserPage> {
 
     await blePeripheral.start(advertiseData: advertiseData);
     setState(() => isAdvertising = true);
-    print("✅ Started advertising as $payload");
+    debugPrint("✅ Started advertising as $payload");
   }
 
   void stopAdvertising() async {
     await blePeripheral.stop();
     setState(() => isAdvertising = false);
-    print("🛑 Stopped advertising");
+    debugPrint("🛑 Stopped advertising");
     dispose();
   }
 
