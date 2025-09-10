@@ -66,9 +66,12 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
               debugPrint("Student $studentId already exists");
               return;
             } else {
-              studentData.add(
-                StudentData(studentId: studentId, studentName: studentName),
-              );
+              setState(() {
+                studentData.add(
+                  StudentData(studentId: studentId, studentName: studentName),
+                );
+              });
+
               debugPrint(
                 "🎓 Student $studentId joined $classCode - $sessionId ✅",
               );
@@ -96,6 +99,28 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text("📡 Scanning for students..."));
+    return Scaffold(
+      body: Column(
+        children: [
+          const SizedBox(height: 30),
+          const Text("📡 Scanning for students..."),
+          Text("Attendees: ${studentData.length}"),
+
+          Expanded(
+            child: ListView.builder(
+              itemCount: studentData.length,
+              itemBuilder: (context, index) {
+                final student = studentData[index];
+                return ListTile(
+                  leading: CircleAvatar(child: Text(student.studentName[0])),
+                  title: Text(student.studentName),
+                  subtitle: Text(student.studentId),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

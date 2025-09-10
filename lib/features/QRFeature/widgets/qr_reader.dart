@@ -22,18 +22,16 @@ class _QrReaderState extends State<QrReader> {
   @override
   void initState() {
     super.initState();
-    // make sure no old advertiser is still running
     FlutterBlePeripheral().stop();
   }
 
-  bool scanSuccess = false;
-
   @override
   void dispose() {
+    final scanSuccess = Provider.of<QrDataProvider>(context);
     FlutterBlePeripheral().stop();
     controller.dispose();
     super.dispose();
-    scanSuccess = false;
+    scanSuccess.setScanSuccess(false);
   }
 
   @override
@@ -53,15 +51,13 @@ class _QrReaderState extends State<QrReader> {
             controller: controller,
             scanWindow: scanWindow,
             onDetect: (capture) async {
-              // if (scanSuccess) return;
+              if (qrDataProvider.scanSuccess) return;
 
               final rawQr = capture.barcodes.first.rawValue;
 
               debugPrint("QR code detected: ${jsonDecode(rawQr ?? '')}");
 
-              if (rawQr != null && scanSuccess == false) {
-                // scanSuccess = true;
-
+              if (rawQr != null && qrDataProvider.scanSuccess == false) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Scan Success'),
@@ -95,6 +91,7 @@ class _QrReaderState extends State<QrReader> {
                 );
 
                 debugPrint("📡 Advertising: $payload");
+                qrDataProvider.setScanSuccess(true);
               }
             },
           ),
