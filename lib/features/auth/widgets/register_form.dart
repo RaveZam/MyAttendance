@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/features/auth/services/auth_service.dart';
 import 'package:myattendance/features/auth/states/account_type_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,21 +47,17 @@ class _RegisterFormState extends State<RegisterForm> {
     });
 
     try {
-      final authResponse = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text,
-        password: _passwordController.text,
-        data: {
-          'student_id': _studentIDController.text,
-          'first_name': _firstNameController.text,
-          'last_name': _lastNameController.text,
-          'account_type': Provider.of<AccountTypeHandler>(
-            context,
-            listen: false,
-          ).accountType,
-        },
+      final authService = AuthService();
+      final success = await authService.signUp(
+        _emailController.text,
+        _passwordController.text,
+        _studentIDController.text,
+        _firstNameController.text,
+        _lastNameController.text,
+        accountType,
       );
       if (!mounted) return;
-      if (authResponse.user != null && authResponse.session != null) {
+      if (success) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/network/wifi_checker.dart';
 import 'package:myattendance/features/auth/states/account_type_handler.dart';
 import 'package:myattendance/features/auth/widgets/login_form.dart';
 import 'package:myattendance/features/auth/widgets/register_form.dart';
@@ -15,6 +16,27 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   final AccountTypeHandler _accountTypeHandler = AccountTypeHandler();
   bool _isLogin = true;
+
+  void checkWiFi() async {
+    final wifiChecker = WifiChecker();
+    final isWiFiAvailable = await wifiChecker.checkWiFi();
+
+    if (!isWiFiAvailable && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please connect to WiFi to continue'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 60),
+        ),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    checkWiFi();
+  }
 
   void _toggleAuthMode() {
     setState(() {
