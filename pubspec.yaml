@@ -40,6 +40,7 @@ dependencies:
   flutter_blue_plus: 1.35.5
   flutter_ble_peripheral: ^1.2.6
   supabase_flutter: ^2.10.0
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

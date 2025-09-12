@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myattendance/features/auth/services/auth_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -32,10 +33,10 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _isLoading = true;
     });
-
+    final authService = AuthService();
     try {
-      await Supabase.instance.client.auth.signOut();
-      if (mounted) {
+      final success = await authService.signOut();
+      if (mounted && success) {
         Navigator.of(context).pushReplacementNamed('/auth');
       }
     } catch (e) {

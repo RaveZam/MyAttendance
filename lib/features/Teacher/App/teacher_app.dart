@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myattendance/features/Home/pages/teacher_home_page.dart';
 import 'package:myattendance/features/QRFeature/states/qr_data_provider.dart';
 import 'package:myattendance/features/Teacher/pages/teacher_main_screen.dart';
-import 'package:myattendance/features/Teacher/states/student_attendance_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:myattendance/features/auth/pages/auth_page.dart';
 

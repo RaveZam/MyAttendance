@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/features/auth/states/account_type_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myattendance/features/auth/services/auth_service.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -32,14 +33,16 @@ class _LoginFormState extends State<LoginForm> {
         _isLoading = true;
       });
 
-      final AuthResponse res = await Supabase.instance.client.auth
-          .signInWithPassword(
-            email: _studentIDController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
+      final authService = AuthService();
+
+      final success = await authService.signIn(
+        _studentIDController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
       if (!mounted) return;
 
-      if (res.user != null && res.session != null) {
+      if (success) {
         Navigator.pushNamed(context, '/home');
       }
     } catch (e) {
@@ -54,18 +57,6 @@ class _LoginFormState extends State<LoginForm> {
         ),
       );
     }
-
-    // await Future<void>.delayed(const Duration(milliseconds: 300));
-    // if (!mounted) return;
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   const SnackBar(
-    //     content: Text('Login logic not implemented.'),
-    //     backgroundColor: Colors.orange,
-    //   ),
-    // );
-    // setState(() {
-    //   _isLoading = false;
-    // });
   }
 
   @override
