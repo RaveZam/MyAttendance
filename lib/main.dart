@@ -14,8 +14,14 @@ Future<void> main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyYWJhbm9ndWZ0dmlyZGpzYWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NTMzMDQsImV4cCI6MjA3MjUyOTMwNH0.LAsaiYmX_ivFc7uLYxp4zU3CfzACspSa4YZq7OyVgn8',
   );
-  final authService = AuthService();
-  await authService.restoreSession();
+
+  try {
+    final authService = AuthService();
+    await authService.restoreSession();
+  } catch (e) {
+    debugPrint('Failed to restore session on startup: $e');
+  }
+
   runApp(MyAttendanceApp());
 }
 
