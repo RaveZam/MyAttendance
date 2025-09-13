@@ -4,8 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:csv/csv.dart';
+import 'package:myattendance/core/database/app_database.dart';
 
 class ImportSchedule {
+  final db = AppDatabase();
+
   Future<List<Map<String, dynamic>>?> importSchedule() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -22,11 +25,35 @@ class ImportSchedule {
         return Map.fromIterables(headers, row);
       }).toList();
 
-      debugPrint(jsonEncode(data));
+      await saveToDatabase(data);
+      // debugPrint(jsonEncode(data));
       return data;
     } else {
       debugPrint('User canceled the picker or Invalid FIle Type');
       return null;
+    }
+  }
+
+  Future<void> saveToDatabase(List<Map<String, dynamic>> data) async {
+    try {
+      final entries = data.map((row) {
+        return SchedulesCompanion.insert(
+          subject: row["subject"] as String,
+          day: row["day"] as String,
+          time: row["time"] as String,
+          room: row["room"] as String,
+        );
+      }).toList();
+
+      await db.insertSchedules(entries);
+      debugPrint('Data saved to database');
+
+      final schedules = await db.getAllSchedules();
+      for (var s in schedules) {
+        debugPrint('${s.subject} - ${s.day} at ${s.time} in ${s.room}');
+      }
+    } catch (e) {
+      debugPrint('Error saving to database: $e');
     }
   }
 }
