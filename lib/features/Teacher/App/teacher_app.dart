@@ -12,12 +12,6 @@ class TeacherApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = Supabase.instance.client.auth.currentSession;
-    // debugPrint('session: $session');
-
-    // if (session != null) {
-    //   final accountType = session.user.userMetadata?['account_type'];
-    //   debugPrint('account type: $accountType');
-    // }
 
     return MaterialApp(
       title: 'Teacher App',

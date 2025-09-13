@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Home/pages/teacher_home_page.dart';
-import 'package:myattendance/features/QRFeature/widgets/qr_generator.dart';
 import 'package:myattendance/features/Settings/pages/settings_page.dart';
+import 'package:myattendance/features/Teacher/features/schedule/pages/schedule_page.dart';
 
 class TeacherMainScreen extends StatefulWidget {
   const TeacherMainScreen({super.key});
@@ -18,7 +18,7 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
 
   final List<Widget> _pages = [
     const TeacherHomePage(),
-    const QrGenerator(),
+    const SchedulePage(),
     const SettingsPage(),
   ];
 
@@ -99,8 +99,8 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
                   index: 0,
                 ),
                 _buildNavItem(
-                  icon: Icons.qr_code_rounded,
-                  label: "QR Generator",
+                  icon: Icons.calendar_month_rounded,
+                  label: "Schedule",
                   index: 1,
                 ),
                 _buildNavItem(
