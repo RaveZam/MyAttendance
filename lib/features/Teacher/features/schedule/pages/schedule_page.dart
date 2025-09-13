@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/database/app_database.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/import_schedule.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/statistics_card.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/schedule_grid.dart';
@@ -15,6 +16,22 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   List<Map<String, dynamic>> _scheduleData = [];
   final ImportSchedule _importSchedule = ImportSchedule();
+  final db = AppDatabase();
+  @override
+  void initState() {
+    super.initState();
+    loadSchedule();
+  }
+
+  void loadSchedule() async {
+    final schedules = await db.getAllSchedules();
+
+    if (schedules.isNotEmpty) {
+      setState(() {
+        _scheduleData = schedules.map((e) => e.toJson()).toList();
+      });
+    }
+  }
 
   void handleImportSchedule() async {
     final data = await _importSchedule.importSchedule();
