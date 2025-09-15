@@ -38,4 +38,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<Schedule>> getAllSchedules() => select(schedules).get();
+
+  Future<void> deleteAllSchedules() => delete(schedules).go();
 }

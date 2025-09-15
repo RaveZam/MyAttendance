@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/widgets/custom_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myattendance/features/auth/services/auth_service.dart';
+import 'package:myattendance/features/Settings/widgets/confirmation_popup.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,180 +32,12 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _handleSignOut() async {
-    await _showSignOutConfirmationDialog();
-  }
-
-  Future<void> _showSignOutConfirmationDialog() async {
-    return showDialog<void>(
+    await ConfirmationPopup(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 20,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.white, Colors.grey[50]!],
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Warning Icon
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Colors.red[400]!, Colors.red[600]!],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.logout_rounded,
-                    size: 40,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Title
-                Text(
-                  'Sign Out',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Message
-                Text(
-                  'Are you sure you want to sign out?',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-
-                // WiFi warning message
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[200]!, width: 1),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.wifi_off_rounded,
-                        size: 16,
-                        color: Colors.orange[700],
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Signing out requires WiFi to log back in',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Colors.orange[700],
-                                fontSize: 11,
-                              ),
-                          textAlign: TextAlign.left,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Buttons
-                Row(
-                  children: [
-                    // Cancel Button
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(
-                            color: Colors.grey[300]!,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Sign Out Button
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _performSignOut,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Sign Out',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+      onConfirm: _performSignOut,
+      onCancel: () async => Navigator.of(context).pop(),
+      isLoading: _isLoading,
+    ).showConfirmationDialog();
   }
 
   Future<void> _performSignOut() async {
@@ -214,12 +48,14 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final success = await authService.signOut();
       if (mounted && success) {
-        Navigator.of(context).pop(); // Close dialog
+        // Ensure the confirmation dialog is closed
+        Navigator.of(context, rootNavigator: true).pop();
         Navigator.of(context).pushReplacementNamed('/auth');
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close dialog
+        // Close the dialog if it's still open
+        Navigator.of(context, rootNavigator: true).maybePop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error signing out: ${e.toString()}'),
@@ -241,11 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        centerTitle: true,
-        elevation: 0,
-      ),
+      appBar: CustomAppBar(title: 'Settings', icon: Icons.settings_rounded),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

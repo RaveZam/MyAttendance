@@ -45,33 +45,7 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.school_rounded,
-                color: Theme.of(context).primaryColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              "Teacher Dashboard",
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-            ),
-          ],
-        ),
-        centerTitle: false,
-      ),
+
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: _pages[_currentIndex],

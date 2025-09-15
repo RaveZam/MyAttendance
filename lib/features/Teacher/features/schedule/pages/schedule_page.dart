@@ -5,6 +5,7 @@ import 'package:myattendance/features/Teacher/features/schedule/widgets/generate
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/schedule_grid.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/class_list.dart';
 import 'package:myattendance/features/Teacher/features/schedule/helpers/format_time.dart';
+import 'package:myattendance/core/widgets/custom_app_bar.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -45,6 +46,62 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Schedule',
+        icon: Icons.calendar_month_rounded,
+        showMenuButton: true,
+        onMenuPressed: () {
+          // Add your menu functionality here
+          showModalBottomSheet(
+            context: context,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (BuildContext context) {
+              return Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ListTile(
+                      leading: const Icon(Icons.edit, color: Colors.blue),
+                      title: const Text('Change Schedule'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Add your change schedule logic here
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                      ),
+                      title: const Text('Delete Schedule'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _scheduleData = [];
+                        });
+                        db.deleteAllSchedules();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
       backgroundColor: Colors.grey[50],
       body: _scheduleData.isEmpty
           ? _buildEmptyState()
