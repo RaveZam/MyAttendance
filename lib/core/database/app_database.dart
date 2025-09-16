@@ -15,7 +15,6 @@ class Schedules extends Table {
 @DriftDatabase(tables: [Schedules])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
-
   @override
   int get schemaVersion => 1;
 

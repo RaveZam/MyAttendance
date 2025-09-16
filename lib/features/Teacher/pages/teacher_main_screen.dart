@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/Home/pages/teacher_home_page.dart';
+import 'package:myattendance/features/Teacher/pages/teacher_home_page.dart';
 import 'package:myattendance/features/Settings/pages/settings_page.dart';
 import 'package:myattendance/features/Teacher/features/schedule/pages/schedule_page.dart';
 
@@ -25,6 +25,7 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,

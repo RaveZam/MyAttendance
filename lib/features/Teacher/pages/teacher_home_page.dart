@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/QRFeature/widgets/qrcode.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
+import 'package:myattendance/features/Teacher/features/schedule/widgets/display_current_class.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -10,6 +11,12 @@ class TeacherHomePage extends StatefulWidget {
 }
 
 class _TeacherHomePageState extends State<TeacherHomePage> {
+  @override
+  void initState() {
+    super.initState();
+    DisplayCurrentClass().displaytCurrentClass();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,21 +95,21 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 const SizedBox(height: 20),
                 // QR Code Section
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Qrcode(),
-                ),
+                // Container(
+                //   padding: const EdgeInsets.all(16),
+                //   decoration: BoxDecoration(
+                //     color: Colors.white,
+                //     borderRadius: BorderRadius.circular(16),
+                //     boxShadow: [
+                //       BoxShadow(
+                //         color: Colors.black.withValues(alpha: 0.08),
+                //         blurRadius: 10,
+                //         offset: const Offset(0, 4),
+                //       ),
+                //     ],
+                //   ),
+                //   child: const Qrcode(),
+                // ),
                 const SizedBox(height: 20),
                 // Instructions
                 Container(

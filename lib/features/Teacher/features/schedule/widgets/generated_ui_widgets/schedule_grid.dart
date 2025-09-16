@@ -218,25 +218,9 @@ class ScheduleGrid extends StatelessWidget {
     // Find the latest hour in the schedule
     for (final daySchedule in weeklySchedule.values) {
       for (final time in daySchedule.keys) {
-        // Parse time to extract hour
-        final timeMatch = RegExp(
-          r'(\d{1,2}):(\d{2})\s*(AM|PM)',
-          caseSensitive: false,
-        ).firstMatch(time);
-        if (timeMatch != null) {
-          int hour = int.tryParse(timeMatch.group(1)!) ?? 0;
-          final period = timeMatch.group(3)?.toUpperCase() ?? '';
-
-          // Convert to 24-hour format
-          if (period == 'PM' && hour != 12) {
-            hour += 12;
-          } else if (period == 'AM' && hour == 12) {
-            hour = 0;
-          }
-
-          if (hour > latestHour) {
-            latestHour = hour;
-          }
+        int hour = _parseTimeTo24Hour(time);
+        if (hour > latestHour) {
+          latestHour = hour;
         }
       }
     }
@@ -260,5 +244,57 @@ class ScheduleGrid extends StatelessWidget {
     }
 
     return timeSlots;
+  }
+
+  // Helper method to parse time to 24-hour format
+  int _parseTimeTo24Hour(String time) {
+    if (time.isEmpty) return 0;
+
+    // Handle time ranges - take the start time
+    if (time.contains('-')) {
+      time = time.split('-')[0].trim();
+    }
+
+    final timePatterns = [
+      // 12-hour format with AM/PM: "1:00 PM", "12:30 AM"
+      RegExp(r'(\d{1,2}):(\d{2})\s*(AM|PM)', caseSensitive: false),
+      // 12-hour format without AM/PM: "1:00", "12:30" (assume AM if <= 12, PM if > 12)
+      RegExp(r'(\d{1,2}):(\d{2})'),
+      // Hour only with AM/PM: "1 PM", "12 AM"
+      RegExp(r'(\d{1,2})\s*(AM|PM)', caseSensitive: false),
+    ];
+
+    for (final pattern in timePatterns) {
+      final match = pattern.firstMatch(time);
+      if (match != null) {
+        int hour = int.tryParse(match.group(1)!) ?? 0;
+        final period = match.groupCount >= 3
+            ? (match.group(3)?.toUpperCase() ?? '')
+            : '';
+
+        if (period.isEmpty) {
+          // No AM/PM - assume 12-hour format
+          // If hour is 1-12, treat as AM for morning hours, PM for afternoon
+          if (hour <= 12) {
+            // For times like "1:00", "2:00", etc., assume AM
+            return hour == 0 ? 0 : hour;
+          } else {
+            // Already in 24-hour format
+            return hour;
+          }
+        } else {
+          // Convert 12-hour to 24-hour
+          if (period == 'AM' && hour == 12) {
+            return 0;
+          } else if (period == 'PM' && hour != 12) {
+            return hour + 12;
+          } else {
+            return hour;
+          }
+        }
+      }
+    }
+
+    return 0;
   }
 }

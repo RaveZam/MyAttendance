@@ -22,7 +22,12 @@ class _QrReaderState extends State<QrReader> {
   @override
   void initState() {
     super.initState();
-    FlutterBlePeripheral().stop();
+
+    stopAdvertising();
+  }
+
+  void stopAdvertising() async {
+    await FlutterBlePeripheral().stop();
   }
 
   @override
@@ -73,24 +78,40 @@ class _QrReaderState extends State<QrReader> {
                   classdata['instructor_name'],
                   classdata['start_time'],
                   classdata['end_time'],
+                  /******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************  */
                 );
 
                 final studentId = userMetadata?['student_id'] ?? '';
-                final studentName = userMetadata?['first_name'] ?? '';
-                final payload =
-                    "STUDENT:$studentId|NAME:$studentName|SESSION:${classdata['class_session_id']}|CLASS:${classdata['class_code']}";
+                // final studentName = userMetadata?['first_name'] ?? '';
+                final payload = "STUDENT:$studentId";
+                Uint8List encodeStudentId(String id) {
+                  final parts = id.split('-'); // ["24", "3051", "TS"]
+
+                  final year = int.parse(parts[0]); // 24
+                  final number = int.parse(parts[1]); // 3051
+                  final suffix = parts[2].codeUnits; // "TS"
+
+                  final bytes = ByteData(5);
+                  bytes.setUint8(0, year); // 1 byte
+                  bytes.setUint16(1, number); // 2 bytes
+                  bytes.setUint8(3, suffix[0]); // 1 byte
+                  bytes.setUint8(4, suffix[1]); // 1 byte
+
+                  return bytes.buffer.asUint8List();
+                }
+
+                await Future.delayed(const Duration(seconds: 1));
 
                 final advertiseData = AdvertiseData(
-                  includeDeviceName: true,
-                  manufacturerId: 2,
-                  manufacturerData: Uint8List.fromList(payload.codeUnits),
+                  includeDeviceName: false,
+                  manufacturerId: 123,
+                  manufacturerData: encodeStudentId(studentId),
                 );
 
-                await FlutterBlePeripheral().start(
-                  advertiseData: advertiseData,
-                );
+                FlutterBlePeripheral().start(advertiseData: advertiseData);
 
                 debugPrint("📡 Advertising: $payload");
+
                 qrDataProvider.setScanSuccess(true);
               }
             },

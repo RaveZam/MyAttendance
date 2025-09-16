@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/Home/pages/student_home_page.dart';
+import 'package:myattendance/features/Student/pages/student_home_page.dart';
 import 'package:myattendance/features/Settings/pages/settings_page.dart';
 
 class StudentMainScreen extends StatefulWidget {

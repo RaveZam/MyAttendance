@@ -37,11 +37,14 @@ class ImportSchedule {
   Future<void> saveToDatabase(List<Map<String, dynamic>> data) async {
     try {
       final entries = data.map((row) {
+        final normalizedRow = {
+          for (var entry in row.entries) entry.key.toLowerCase(): entry.value,
+        };
         return SchedulesCompanion.insert(
-          subject: row["subject"] as String,
-          day: row["day"] as String,
-          time: row["time"] as String,
-          room: row["room"] as String,
+          subject: normalizedRow["subject"] as String,
+          day: normalizedRow["day"] as String,
+          time: normalizedRow["time"] as String,
+          room: normalizedRow["room"] as String,
         );
       }).toList();
 

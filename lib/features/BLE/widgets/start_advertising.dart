@@ -26,8 +26,8 @@ class _StudentAdvertiserPageState extends State<StudentAdvertiserPage> {
     String payload = "STUDENT:$payloadInput";
     AdvertiseData advertiseData = AdvertiseData(
       includeDeviceName: false,
-      manufacturerId: 2, // pick any 16-bit number for your app
-      manufacturerData: Uint8List.fromList(payload.codeUnits),
+      // manufacturerId: 123, // pick any 16-bit number for your app
+      // manufacturerData: Uint8List.fromList(payload.codeUnits),
     );
 
     await blePeripheral.start(advertiseData: advertiseData);
