@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:myattendance/core/widgets/get_date_now.dart';
 
 class ScheduleFilter {
-  List<Schedule> getCurrentClass(List<Schedule> schedules) {
+  Future<List<Schedule>> getCurrentClass() async {
+    final schedules = await AppDatabase().getAllSchedules();
     return schedules.where((s) {
       if (s.day != GetDateNow.getDayNow()) return false;
       List<String> time = s.time.split('-');

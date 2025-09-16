@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/features/QRFeature/widgets/qrcode.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/display_current_class.dart';
+import 'package:myattendance/features/Teacher/features/schedule/widgets/display_next_class.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -13,8 +13,8 @@ class TeacherHomePage extends StatefulWidget {
 class _TeacherHomePageState extends State<TeacherHomePage> {
   @override
   void initState() {
+    DisplayCurrentClass();
     super.initState();
-    DisplayCurrentClass().displaytCurrentClass();
   }
 
   @override
@@ -94,6 +94,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                DisplayCurrentClass(),
+                DisplayNextClass(),
                 // QR Code Section
                 // Container(
                 //   padding: const EdgeInsets.all(16),
