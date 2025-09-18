@@ -5,18 +5,18 @@ class DisplayNextClass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String label = 'NEXT CLASS';
-    const String timeRange = '11:45 AM - 1:15 PM';
-    const String title = 'Physics - Grade 11B';
-    const String room = 'Lab 3';
-    const int studentsCount = 25;
-    const String startsIn = 'Starts in 15 minutes';
+    // Mock data (static UI)
+    const subject = 'Data Structures';
+    const subtitle = 'Advanced Algorithms';
+    const timeRange = '11:00 AM - 12:30 PM';
+    const room = 'Room 301';
+    const startsIn = 'Starts in 30 min';
 
     return Stack(
       children: [
-        // Card
         Container(
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -28,91 +28,89 @@ class DisplayNextClass extends StatelessWidget {
               ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      label,
-                      style: TextStyle(
-                        color: Color(0xFFB45309), // amber-700 like
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF59E0B),
+                      shape: BoxShape.circle,
                     ),
-                    const Spacer(),
-                    Text(
-                      timeRange,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'UPCOMING',
+                    style: TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  title,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _buildSubtitle(room, studentsCount),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        startsIn,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    room,
+                    style: TextStyle(
+                      color: Color(0xFF4B5563),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF111827),
-                        side: BorderSide(color: Colors.grey[300]!),
-                        backgroundColor: Colors.grey[100],
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text('Prepare'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                subject,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                subtitle,
+                style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: const [
+                  Icon(Icons.access_time, size: 16, color: Color(0xFF374151)),
+                  SizedBox(width: 8),
+                  Text(
+                    timeRange,
+                    style: TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  Spacer(),
+                  Text(
+                    startsIn,
+                    style: TextStyle(
+                      color: Color(0xFFDC2626),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        // Thick left border
         Positioned(
           left: 16,
           top: 16,
           bottom: 16,
           child: Container(
-            width: 8,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
+            width: 6,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(12),
                 bottomLeft: Radius.circular(12),
               ),
               gradient: LinearGradient(
-                colors: [const Color(0xFFF59E0B), const Color(0xFFFDE68A)],
+                colors: [Color(0xFFF59E0B), Color(0xFFFCD34D)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -121,12 +119,5 @@ class DisplayNextClass extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  static String _buildSubtitle(String room, int students) {
-    final roomText = room.isNotEmpty ? room : '';
-    final studentsText = '• $students students';
-    if (roomText.isEmpty) return studentsText.replaceFirst('• ', '');
-    return '$roomText $studentsText';
   }
 }

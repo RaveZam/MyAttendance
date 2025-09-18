@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/display_current_class.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/display_next_class.dart';
+import 'package:myattendance/features/Teacher/widgets/overview_section.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -35,6 +36,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
+                OverviewSection(),
                 DisplayCurrentClass(),
                 DisplayNextClass(),
                 // QR Code Section

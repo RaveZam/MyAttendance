@@ -11,6 +11,7 @@ class ClassDetailsPage extends StatefulWidget {
 
 class _ClassDetailsPageState extends State<ClassDetailsPage> {
   Schedule? classDetails;
+
   void loadClassDetails() async {
     final classDetails = await AppDatabase().getScheduleById(widget.classID);
     debugPrint(classDetails?.toJson().toString());
@@ -40,6 +41,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
                   classDetails ??
                   Schedule(id: 0, subject: '', day: '', time: '', room: ''),
             ),
+            const SizedBox(height: 12),
+
             // const SizedBox(height: 24),
             // _QuickActionsSection(),
             // const SizedBox(height: 24),
