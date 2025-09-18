@@ -39,4 +39,8 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Schedule>> getAllSchedules() => select(schedules).get();
 
   Future<void> deleteAllSchedules() => delete(schedules).go();
+
+  Future<Schedule?> getScheduleById(int id) async => await (select(
+    schedules,
+  )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
 }

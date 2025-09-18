@@ -51,7 +51,6 @@ class _SchedulePageState extends State<SchedulePage> {
         icon: Icons.calendar_month_rounded,
         showMenuButton: true,
         onMenuPressed: () {
-          // Add your menu functionality here
           showModalBottomSheet(
             context: context,
             shape: const RoundedRectangleBorder(
@@ -192,7 +191,6 @@ Widget _buildSchedule(
   return SingleChildScrollView(
     child: Column(
       children: [
-        // Statistics at the top
         Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           padding: const EdgeInsets.all(20),

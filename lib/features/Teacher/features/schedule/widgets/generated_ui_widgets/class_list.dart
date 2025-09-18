@@ -32,11 +32,12 @@ class ClassList extends StatelessWidget {
 
     for (final schedule in scheduleData) {
       final subject = schedule['subject']?.toString() ?? '';
+      final classID = schedule['id']?.toString() ?? '';
       if (subject.isNotEmpty) {
         if (!classesBySubject.containsKey(subject)) {
           classesBySubject[subject] = [];
         }
-        classesBySubject[subject]!.add(schedule);
+        classesBySubject[subject]!.add({'id': classID, ...schedule});
       }
     }
 
@@ -84,6 +85,7 @@ class ClassList extends StatelessWidget {
 
       return ClassCard(
         subject: subject,
+        classID: classSessions.first['id']?.toString() ?? '',
         sessionCount: classSessions.length,
         daysPerWeek: uniqueDays.length,
         nextSession: nextSession,
