@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/features/Student/App/student_app.dart';
 import 'package:myattendance/features/Teacher/App/teacher_app.dart';
 import 'package:myattendance/features/auth/pages/auth_page.dart';
-import 'package:myattendance/features/auth/services/auth_service.dart';
 
 // import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,14 +12,15 @@ Future<void> main() async {
     url: 'https://crabanoguftvirdjsabh.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNyYWJhbm9ndWZ0dmlyZGpzYWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NTMzMDQsImV4cCI6MjA3MjUyOTMwNH0.LAsaiYmX_ivFc7uLYxp4zU3CfzACspSa4YZq7OyVgn8',
+    authOptions: const FlutterAuthClientOptions(autoRefreshToken: true),
   );
 
-  try {
-    final authService = AuthService();
-    await authService.restoreSession();
-  } catch (e) {
-    debugPrint('Failed to restore session on startup: $e');
-  }
+  // try {
+  //   final authService = AuthService();
+  //   await authService.restoreSession();
+  // } catch (e) {
+  //   debugPrint('Failed to restore session on startup: $e');
+  // }
 
   runApp(MyAttendanceApp());
 }
