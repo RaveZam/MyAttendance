@@ -17,8 +17,8 @@ class OverviewSection extends StatelessWidget {
                 "Today's Overview",
                 style: TextStyle(
                   color: scheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
                 ),
               ),
               const Spacer(),
@@ -39,8 +39,8 @@ class OverviewSection extends StatelessWidget {
                       'Today',
                       style: TextStyle(
                         color: scheme.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -63,49 +63,42 @@ class OverviewSection extends StatelessWidget {
               ],
             ),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: const [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.calendar_today,
-                        iconColor: Color(0xFF2563EB),
-                        label: 'Classes Today',
-                        value: '5',
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _AttendanceCard(
-                        label: 'Attendance Rate',
-                        value: '92%',
-                        progress: 0.92,
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: _CompactStatCard(
+                    icon: Icons.calendar_today,
+                    iconColor: Color(0xFF2563EB),
+                    label: 'Classes',
+                    value: '5',
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: const [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.groups,
-                        iconColor: Color(0xFF059669),
-                        label: 'Total Students',
-                        value: '128',
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.verified,
-                        iconColor: Color(0xFFF59E0B),
-                        label: 'Present Today',
-                        value: '118',
-                      ),
-                    ),
-                  ],
+                SizedBox(width: 8),
+                Expanded(
+                  child: _CompactStatCard(
+                    icon: Icons.insights,
+                    iconColor: Color(0xFF10B981),
+                    label: 'Attendance',
+                    value: '92%',
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: _CompactStatCard(
+                    icon: Icons.groups,
+                    iconColor: Color(0xFF059669),
+                    label: 'Students',
+                    value: '128',
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: _CompactStatCard(
+                    icon: Icons.verified,
+                    iconColor: Color(0xFFF59E0B),
+                    label: 'Present',
+                    value: '118',
+                  ),
                 ),
               ],
             ),
@@ -116,13 +109,13 @@ class OverviewSection extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _CompactStatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String value;
   final String label;
 
-  const _StatCard({
+  const _CompactStatCard({
     required this.icon,
     required this.iconColor,
     required this.value,
@@ -132,129 +125,38 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: scheme.onSurface.withOpacity(0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            color: scheme.onSurface,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AttendanceCard extends StatelessWidget {
-  final String value;
-  final String label;
-  final double progress;
-
-  const _AttendanceCard({
-    required this.value,
-    required this.label,
-    required this.progress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.insights, color: Color(0xFF10B981)),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: scheme.onSurface.withOpacity(0.7),
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: scheme.primary.withOpacity(0.08),
-                        color: const Color(0xFF10B981),
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: scheme.onSurface.withOpacity(0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
