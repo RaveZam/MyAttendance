@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
+import 'package:myattendance/features/Teacher/features/students_list/pages/student_page.dart';
 
 class ClassDetailsPage extends StatefulWidget {
   final int classID;
@@ -308,12 +309,18 @@ class _FeatureListSection extends StatelessWidget {
         ],
       ),
       child: Column(
-        children: const [
+        children: [
           _FeatureListItem(
             icon: Icons.people,
             title: 'Students List',
             description: 'Manage enrolled students',
             trailing: '124',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => (StudentPage())),
+              );
+            },
           ),
           _Divider(),
           _FeatureListItem(
@@ -321,6 +328,9 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Attendance History',
             description: 'View attendance analytics',
             trailing: '87%',
+            onTap: () {
+              debugPrint('Attendance History');
+            },
           ),
           _Divider(),
           _FeatureListItem(
@@ -328,6 +338,9 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Class Sessions',
             description: 'View all session records',
             trailing: '32',
+            onTap: () {
+              debugPrint('Class Sessions');
+            },
           ),
           _Divider(),
           _FeatureListItem(
@@ -335,6 +348,9 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Schedule',
             description: 'Manage class timetable',
             trailing: '',
+            onTap: () {
+              debugPrint('Schedule');
+            },
           ),
           _Divider(),
           _FeatureListItem(
@@ -342,6 +358,9 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Reports',
             description: 'Generate attendance reports',
             trailing: '',
+            onTap: () {
+              debugPrint('Reports');
+            },
           ),
           _Divider(),
           _FeatureListItem(
@@ -349,6 +368,9 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Class Settings',
             description: 'Configure class preferences',
             trailing: '',
+            onTap: () {
+              debugPrint('Class Settings');
+            },
           ),
         ],
       ),
@@ -361,59 +383,66 @@ class _FeatureListItem extends StatelessWidget {
   final String title;
   final String description;
   final String trailing;
+  final VoidCallback onTap;
 
   const _FeatureListItem({
     required this.icon,
     required this.title,
     required this.description,
     required this.trailing,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: scheme.surfaceVariant,
-          borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: onTap,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: scheme.surfaceVariant,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: scheme.onSurfaceVariant, size: 20),
         ),
-        child: Icon(icon, color: scheme.onSurfaceVariant, size: 20),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
-          color: scheme.onSurface,
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: scheme.onSurface,
+          ),
         ),
-      ),
-      subtitle: Text(
-        description,
-        style: TextStyle(
-          color: scheme.onSurface.withOpacity(0.7),
-          fontSize: 13,
+        subtitle: Text(
+          description,
+          style: TextStyle(
+            color: scheme.onSurface.withOpacity(0.7),
+            fontSize: 13,
+          ),
         ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailing.isNotEmpty)
-            Text(
-              trailing,
-              style: TextStyle(
-                color: scheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.w500,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (trailing.isNotEmpty)
+              Text(
+                trailing,
+                style: TextStyle(
+                  color: scheme.onSurface.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          const SizedBox(width: 8),
-          Icon(Icons.arrow_forward_ios, color: scheme.outline, size: 16),
-        ],
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios, color: scheme.outline, size: 16),
+          ],
+        ),
+        onTap: () {
+          onTap();
+        },
       ),
-      onTap: () {},
     );
   }
 }
