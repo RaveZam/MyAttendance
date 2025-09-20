@@ -17,7 +17,7 @@ class ClassCard extends StatelessWidget {
     required this.daysPerWeek,
     required this.nextSession,
     required this.icon,
-    required this.color,
+    required this.color, 
     required this.classID,
   });
 
