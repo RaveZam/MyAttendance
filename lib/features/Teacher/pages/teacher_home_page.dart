@@ -15,7 +15,7 @@ class TeacherHomePage extends StatefulWidget {
 class _TeacherHomePageState extends State<TeacherHomePage> {
   @override
   void initState() {
-    DisplayCurrentClass();
+    // DisplayCurrentClass();
     super.initState();
   }
 
@@ -38,7 +38,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             child: Column(
               children: [
                 OverviewSection(),
-                DisplayCurrentClass(),
+                // DisplayCurrentClass(),
                 DisplayNextClass(),
 
                 // Container(

@@ -14,11 +14,11 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
   Schedule? classDetails;
 
   void loadClassDetails() async {
-    final classDetails = await AppDatabase().getScheduleById(widget.classID);
-    debugPrint(classDetails?.toJson().toString());
-    setState(() {
-      this.classDetails = classDetails;
-    });
+    // final classDetails = await AppDatabase().getScheduleById(widget.classID);
+    // debugPrint(classDetails?.toJson().toString());
+    // setState(() {
+    //   this.classDetails = classDetails;
+    // });
   }
 
   @override
@@ -36,17 +36,17 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _ClassSummaryCard(
-              classID: widget.classID,
-              classDetails:
-                  classDetails ??
-                  Schedule(id: 0, subject: '', day: '', time: '', room: ''),
-            ),
+            // _ClassSummaryCard(
+            //   classID: widget.classID,
+            //   classDetails:
+            //       classDetails ??
+            //       Schedule(id: 0, subject: '', day: '', time: '', room: ''),
+            // ),
             const SizedBox(height: 12),
 
-            // const SizedBox(height: 24),
-            // _QuickActionsSection(),
-            // const SizedBox(height: 24),
+            const SizedBox(height: 24),
+            _QuickActionsSection(),
+            const SizedBox(height: 24),
             _FeatureListSection(),
           ],
         ),
@@ -133,14 +133,14 @@ class _ClassSummaryCard extends StatelessWidget {
               color: scheme.onSurface,
             ),
           ),
-          Text(
-            classDetails.subject,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
-          ),
+          // Text(
+          //   classDetails.subject,
+          //   style: TextStyle(
+          //     fontSize: 20,
+          //     fontWeight: FontWeight.w700,
+          //     color: scheme.onSurface,
+          //   ),
+          // ),
           const SizedBox(height: 6),
           Text(
             'Spring Semester 2025',

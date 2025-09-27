@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
-import 'package:myattendance/features/Teacher/features/schedule/widgets/import_schedule.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/statistics_card.dart';
-import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/schedule_grid.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/class_list.dart';
-import 'package:myattendance/features/Teacher/features/schedule/helpers/format_time.dart';
+import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
 
 class SchedulePage extends StatefulWidget {
@@ -16,12 +14,21 @@ class SchedulePage extends StatefulWidget {
 
 class _SchedulePageState extends State<SchedulePage> {
   List<Map<String, dynamic>> _scheduleData = [];
-  final ImportSchedule _importSchedule = ImportSchedule();
-  final db = AppDatabase();
+  List<Map<String, dynamic>> _subjectsData = [];
+  final db = AppDatabase.instance;
   @override
   void initState() {
     super.initState();
+    loadSubjects();
     loadSchedule();
+  }
+
+  void loadSubjects() async {
+    final subjects = await db.getAllSubjects();
+    setState(() {
+      _subjectsData = subjects.map((e) => e.toJson()).toList();
+    });
+    debugPrint(_subjectsData.toString());
   }
 
   void loadSchedule() async {
@@ -31,15 +38,18 @@ class _SchedulePageState extends State<SchedulePage> {
       setState(() {
         _scheduleData = schedules.map((e) => e.toJson()).toList();
       });
+      debugPrint(_scheduleData.toString());
     }
   }
 
-  void handleImportSchedule() async {
-    final data = await _importSchedule.importSchedule();
-    if (data != null) {
-      setState(() {
-        _scheduleData = data;
-      });
+  void _navigateToAddSubject() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddSubjectPage()),
+    );
+
+    if (result == true) {
+      loadSchedule();
     }
   }
 
@@ -49,57 +59,6 @@ class _SchedulePageState extends State<SchedulePage> {
       appBar: CustomAppBar(
         title: 'Schedule',
         icon: Icons.calendar_month_rounded,
-        showMenuButton: true,
-        onMenuPressed: () {
-          showModalBottomSheet(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (BuildContext context) {
-              return Container(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ListTile(
-                      leading: const Icon(Icons.edit, color: Colors.blue),
-                      title: const Text('Change Schedule'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        // Add your change schedule logic here
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.red,
-                      ),
-                      title: const Text('Delete Schedule'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        setState(() {
-                          _scheduleData = [];
-                        });
-                        db.deleteAllSchedules();
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                ),
-              );
-            },
-          );
-        },
       ),
       backgroundColor: Colors.grey[50],
       body: _scheduleData.isEmpty
@@ -146,7 +105,7 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Import your schedule from a CSV file to get started',
+                    'Add your first class to get started',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -156,9 +115,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton.icon(
-                    onPressed: handleImportSchedule,
-                    icon: const Icon(Icons.upload_file),
-                    label: const Text('Import CSV'),
+                    onPressed: _navigateToAddSubject,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Class'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
@@ -185,9 +144,6 @@ Widget _buildSchedule(
   List<Map<String, dynamic>> scheduleData,
   BuildContext context,
 ) {
-  // Process your actual scheduleData into weekly format
-  final weeklySchedule = _processScheduleData(scheduleData);
-
   return SingleChildScrollView(
     child: Column(
       children: [
@@ -227,27 +183,6 @@ Widget _buildSchedule(
           ),
         ),
 
-        const SizedBox(height: 16),
-
-        // Schedule Grid
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ScheduleGrid(weeklySchedule: weeklySchedule),
-        ),
-
-        const SizedBox(height: 16),
-
         // Class List
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -256,58 +191,4 @@ Widget _buildSchedule(
       ],
     ),
   );
-}
-
-// Process your actual scheduleData into weekly format
-Map<String, Map<String, String>> _processScheduleData(
-  List<Map<String, dynamic>> scheduleData,
-) {
-  final weeklySchedule = <String, Map<String, String>>{
-    'monday': {},
-    'tuesday': {},
-    'wednesday': {},
-    'thursday': {},
-    'friday': {},
-  };
-
-  for (final schedule in scheduleData) {
-    // Extract day, time, and subject from your data
-    final day = (schedule['day'] ?? '').toString().toLowerCase();
-    final time = schedule['time'] ?? '';
-    final subject = schedule['subject'] ?? '';
-
-    // Map day names to our format
-    String dayKey = '';
-    switch (day) {
-      case 'monday':
-      case 'mon':
-        dayKey = 'monday';
-        break;
-      case 'tuesday':
-      case 'tue':
-        dayKey = 'tuesday';
-        break;
-      case 'wednesday':
-      case 'wed':
-        dayKey = 'wednesday';
-        break;
-      case 'thursday':
-      case 'thu':
-        dayKey = 'thursday';
-        break;
-      case 'friday':
-      case 'fri':
-        dayKey = 'friday';
-        break;
-    }
-
-    if (dayKey.isNotEmpty && time.isNotEmpty && subject.isNotEmpty) {
-      final formattedTime = FormatTime().formatTime(time);
-      if (formattedTime.isNotEmpty) {
-        weeklySchedule[dayKey]![formattedTime] = subject;
-      }
-    }
-  }
-
-  return weeklySchedule;
 }

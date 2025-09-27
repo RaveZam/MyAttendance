@@ -324,14 +324,7 @@ class _ImportStudentsSection extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => debugPrint('Choose File'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+
                     child: const Text('Choose File'),
                   ),
                 ),
