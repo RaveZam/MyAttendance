@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/database/app_database.dart';
 import 'class_card.dart';
 import 'empty_classes_state.dart';
 
 class ClassList extends StatelessWidget {
-  final List<Map<String, dynamic>> scheduleData;
+  final List<Map<String, dynamic>> finalData;
 
-  const ClassList({super.key, required this.scheduleData});
+  const ClassList({super.key, required this.finalData});
 
   @override
   Widget build(BuildContext context) {
@@ -27,53 +28,44 @@ class ClassList extends StatelessWidget {
   }
 
   List<Widget> _buildClassList() {
-    // Group schedule data by subject to create class entries
     final Map<String, List<Map<String, dynamic>>> classesBySubject = {};
+    debugPrint("Schedule Data: ${finalData.toString()}");
 
-    for (final schedule in scheduleData) {
-      final subject = schedule['subject']?.toString() ?? '';
-      final classID = schedule['id']?.toString() ?? '';
+    for (final data in finalData) {
+      debugPrint("Data ${data['termId']}");
+      final subject = data['subjectData']['subjectName'] ?? '';
+      final classID = data['id']?.toString() ?? '';
       if (subject.isNotEmpty) {
         if (!classesBySubject.containsKey(subject)) {
           classesBySubject[subject] = [];
         }
-        classesBySubject[subject]!.add({'id': classID, ...schedule});
+        classesBySubject[subject]!.add({'id': classID, ...data});
       }
     }
 
-    // If no schedule data, show empty state
     if (classesBySubject.isEmpty) {
       return [const EmptyClassesState()];
     }
 
-    // Generate class list from actual data
     return classesBySubject.entries.map((entry) {
       final subject = entry.key;
       final classSessions = entry.value;
 
-      // Extract course details from the first session
       final firstSession = classSessions.first;
+      final startTime = firstSession['startTime'].toString();
+      final endTime = firstSession['endTime'].toString();
       final courseCode =
-          firstSession['course_code']?.toString() ??
-          firstSession['code']?.toString() ??
-          subject.split(' ').last; // Use last word as fallback
-      final location =
-          firstSession['location']?.toString() ??
-          firstSession['room']?.toString() ??
-          'TBA';
-      final time = firstSession['time']?.toString() ?? 'TBA';
-      final instructor =
-          firstSession['instructor']?.toString() ??
-          firstSession['teacher']?.toString() ??
-          'TBA';
+          firstSession['subjectData']['subjectCode']?.toString() ?? "0";
+
+      final room = firstSession['room']?.toString() ?? 'TBA';
 
       return ClassCard(
         subject: subject,
         classID: classSessions.first['id']?.toString() ?? '',
         courseCode: courseCode,
-        location: location,
-        time: time,
-        instructor: instructor,
+        room: room,
+        startTime: startTime,
+        endTime: endTime,
         status: 'SCHEDULED',
         semester: 'SPRING 2025',
       );

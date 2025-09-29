@@ -15,6 +15,7 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   List<Map<String, dynamic>> _scheduleData = [];
   List<Map<String, dynamic>> _subjectsData = [];
+
   final db = AppDatabase.instance;
   @override
   void initState() {
@@ -24,12 +25,51 @@ class _SchedulePageState extends State<SchedulePage> {
     db.ensureTermsExist(db);
   }
 
+  final List<Map<String, dynamic>> _finalData = [];
+
+  Future<Term?> getTermById(int id) async {
+    return await db.getTermById(id);
+  }
+
+  Future<void> combineData() async {
+    for (var schedule in _scheduleData) {
+      var matchingSubject = _subjectsData.firstWhere(
+        (subject) => subject['id'] == schedule['subjectId'],
+        orElse: () => {},
+      );
+
+      final termData = await getTermById(schedule['termId']);
+
+      var matchingTerm = _scheduleData.firstWhere(
+        (sched) => sched['termId'] == termData?.id.toString(),
+        orElse: () => {},
+      );
+
+      debugPrint(matchingTerm.toString());
+
+      var combined = {
+        ...schedule,
+        'subjectData': matchingSubject,
+        "termData": termData,
+      };
+      combined.remove('subjectId');
+      combined.remove('termId');
+
+      setState(() {
+        _finalData.add(combined);
+      });
+    }
+  }
+
   void loadSubjects() async {
     final subjects = await db.getAllSubjects();
     setState(() {
       _subjectsData = subjects.map((e) => e.toJson()).toList();
     });
-    debugPrint(_subjectsData.toString());
+
+    if (_subjectsData.isNotEmpty) {
+      combineData();
+    }
   }
 
   void loadSchedule() async {
@@ -39,7 +79,7 @@ class _SchedulePageState extends State<SchedulePage> {
       setState(() {
         _scheduleData = schedules.map((e) => e.toJson()).toList();
       });
-      debugPrint(_scheduleData.toString());
+      // debugPrint("Schedule Data: ${_scheduleData.toString()}");
     }
   }
 
@@ -64,7 +104,7 @@ class _SchedulePageState extends State<SchedulePage> {
       backgroundColor: Colors.grey[50],
       body: _scheduleData.isEmpty
           ? _buildEmptyState()
-          : _buildSchedule(_scheduleData, context),
+          : _buildSchedule(_finalData, context),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddSubject,
         child: const Icon(Icons.add),
@@ -149,7 +189,7 @@ class _SchedulePageState extends State<SchedulePage> {
 }
 
 Widget _buildSchedule(
-  List<Map<String, dynamic>> scheduleData,
+  List<Map<String, dynamic>> finalData,
   BuildContext context,
 ) {
   return SingleChildScrollView(
@@ -194,7 +234,7 @@ Widget _buildSchedule(
         // Class List
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassList(scheduleData: scheduleData),
+          child: ClassList(finalData: finalData),
         ),
       ],
     ),

@@ -116,6 +116,12 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Term>> getTerms() => select(terms).get();
 
+  Future<Term?> getTermById(int id) async {
+    return await (select(
+      terms,
+    )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+  }
+
   Future<void> ensureTermsExist(AppDatabase db) async {
     final now = DateTime.now();
     final startYear = now.year;

@@ -4,9 +4,9 @@ import 'package:myattendance/features/Teacher/features/class_details/pages/class
 class ClassCard extends StatelessWidget {
   final String subject;
   final String courseCode;
-  final String location;
-  final String time;
-  final String instructor;
+  final String room;
+  final String startTime;
+  final String endTime;
   final String status;
   final String semester;
   final String classID;
@@ -15,9 +15,9 @@ class ClassCard extends StatelessWidget {
     super.key,
     required this.subject,
     required this.courseCode,
-    required this.location,
-    required this.time,
-    required this.instructor,
+    required this.room,
+    required this.startTime,
+    required this.endTime,
     required this.status,
     required this.semester,
     required this.classID,
@@ -119,7 +119,7 @@ class ClassCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  location,
+                  room,
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ],
@@ -135,7 +135,12 @@ class ClassCard extends StatelessWidget {
                     Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                     const SizedBox(width: 6),
                     Text(
-                      time,
+                      startTime,
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                    ),
+                    Text("-"),
+                    Text(
+                      endTime,
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                     ),
                     const SizedBox(width: 12),
@@ -149,11 +154,6 @@ class ClassCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 6),
-                    Text(
-                      instructor,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
                   ],
                 ),
                 // View button
