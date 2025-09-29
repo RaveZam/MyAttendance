@@ -17,4 +17,9 @@ class GetDateNow {
     final now = DateTime.now();
     return DateFormat('EEEE').format(now);
   }
+
+  static String getYearNow() {
+    final now = DateTime.now();
+    return DateFormat('yyyy').format(now);
+  }
 }

@@ -19,8 +19,9 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void initState() {
     super.initState();
-    loadSubjects();
-    loadSchedule();
+    // loadSubjects();
+    // loadSchedule();
+    db.clearAllData();
   }
 
   void loadSubjects() async {
@@ -64,6 +65,13 @@ class _SchedulePageState extends State<SchedulePage> {
       body: _scheduleData.isEmpty
           ? _buildEmptyState()
           : _buildSchedule(_scheduleData, context),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _navigateToAddSubject,
+        child: const Icon(Icons.add),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
+      ),
     );
   }
 

@@ -38,7 +38,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             child: Column(
               children: [
                 OverviewSection(),
-                // DisplayCurrentClass(),
+
                 DisplayNextClass(),
 
                 // Container(

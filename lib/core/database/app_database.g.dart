@@ -3,6 +3,350 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $TermsTable extends Terms with TableInfo<$TermsTable, Term> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TermsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _termMeta = const VerificationMeta('term');
+  @override
+  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+    'term',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startYearMeta = const VerificationMeta(
+    'startYear',
+  );
+  @override
+  late final GeneratedColumn<String> startYear = GeneratedColumn<String>(
+    'start_year',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endYearMeta = const VerificationMeta(
+    'endYear',
+  );
+  @override
+  late final GeneratedColumn<String> endYear = GeneratedColumn<String>(
+    'end_year',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, term, startYear, endYear, synced];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'terms';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Term> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('term')) {
+      context.handle(
+        _termMeta,
+        term.isAcceptableOrUnknown(data['term']!, _termMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_termMeta);
+    }
+    if (data.containsKey('start_year')) {
+      context.handle(
+        _startYearMeta,
+        startYear.isAcceptableOrUnknown(data['start_year']!, _startYearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startYearMeta);
+    }
+    if (data.containsKey('end_year')) {
+      context.handle(
+        _endYearMeta,
+        endYear.isAcceptableOrUnknown(data['end_year']!, _endYearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endYearMeta);
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Term map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Term(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      term: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}term'],
+      )!,
+      startYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}start_year'],
+      )!,
+      endYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}end_year'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+    );
+  }
+
+  @override
+  $TermsTable createAlias(String alias) {
+    return $TermsTable(attachedDatabase, alias);
+  }
+}
+
+class Term extends DataClass implements Insertable<Term> {
+  final int id;
+  final String term;
+  final String startYear;
+  final String endYear;
+  final bool synced;
+  const Term({
+    required this.id,
+    required this.term,
+    required this.startYear,
+    required this.endYear,
+    required this.synced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['term'] = Variable<String>(term);
+    map['start_year'] = Variable<String>(startYear);
+    map['end_year'] = Variable<String>(endYear);
+    map['synced'] = Variable<bool>(synced);
+    return map;
+  }
+
+  TermsCompanion toCompanion(bool nullToAbsent) {
+    return TermsCompanion(
+      id: Value(id),
+      term: Value(term),
+      startYear: Value(startYear),
+      endYear: Value(endYear),
+      synced: Value(synced),
+    );
+  }
+
+  factory Term.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Term(
+      id: serializer.fromJson<int>(json['id']),
+      term: serializer.fromJson<String>(json['term']),
+      startYear: serializer.fromJson<String>(json['startYear']),
+      endYear: serializer.fromJson<String>(json['endYear']),
+      synced: serializer.fromJson<bool>(json['synced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'term': serializer.toJson<String>(term),
+      'startYear': serializer.toJson<String>(startYear),
+      'endYear': serializer.toJson<String>(endYear),
+      'synced': serializer.toJson<bool>(synced),
+    };
+  }
+
+  Term copyWith({
+    int? id,
+    String? term,
+    String? startYear,
+    String? endYear,
+    bool? synced,
+  }) => Term(
+    id: id ?? this.id,
+    term: term ?? this.term,
+    startYear: startYear ?? this.startYear,
+    endYear: endYear ?? this.endYear,
+    synced: synced ?? this.synced,
+  );
+  Term copyWithCompanion(TermsCompanion data) {
+    return Term(
+      id: data.id.present ? data.id.value : this.id,
+      term: data.term.present ? data.term.value : this.term,
+      startYear: data.startYear.present ? data.startYear.value : this.startYear,
+      endYear: data.endYear.present ? data.endYear.value : this.endYear,
+      synced: data.synced.present ? data.synced.value : this.synced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Term(')
+          ..write('id: $id, ')
+          ..write('term: $term, ')
+          ..write('startYear: $startYear, ')
+          ..write('endYear: $endYear, ')
+          ..write('synced: $synced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, term, startYear, endYear, synced);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Term &&
+          other.id == this.id &&
+          other.term == this.term &&
+          other.startYear == this.startYear &&
+          other.endYear == this.endYear &&
+          other.synced == this.synced);
+}
+
+class TermsCompanion extends UpdateCompanion<Term> {
+  final Value<int> id;
+  final Value<String> term;
+  final Value<String> startYear;
+  final Value<String> endYear;
+  final Value<bool> synced;
+  const TermsCompanion({
+    this.id = const Value.absent(),
+    this.term = const Value.absent(),
+    this.startYear = const Value.absent(),
+    this.endYear = const Value.absent(),
+    this.synced = const Value.absent(),
+  });
+  TermsCompanion.insert({
+    this.id = const Value.absent(),
+    required String term,
+    required String startYear,
+    required String endYear,
+    required bool synced,
+  }) : term = Value(term),
+       startYear = Value(startYear),
+       endYear = Value(endYear),
+       synced = Value(synced);
+  static Insertable<Term> custom({
+    Expression<int>? id,
+    Expression<String>? term,
+    Expression<String>? startYear,
+    Expression<String>? endYear,
+    Expression<bool>? synced,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (term != null) 'term': term,
+      if (startYear != null) 'start_year': startYear,
+      if (endYear != null) 'end_year': endYear,
+      if (synced != null) 'synced': synced,
+    });
+  }
+
+  TermsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? term,
+    Value<String>? startYear,
+    Value<String>? endYear,
+    Value<bool>? synced,
+  }) {
+    return TermsCompanion(
+      id: id ?? this.id,
+      term: term ?? this.term,
+      startYear: startYear ?? this.startYear,
+      endYear: endYear ?? this.endYear,
+      synced: synced ?? this.synced,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (term.present) {
+      map['term'] = Variable<String>(term.value);
+    }
+    if (startYear.present) {
+      map['start_year'] = Variable<String>(startYear.value);
+    }
+    if (endYear.present) {
+      map['end_year'] = Variable<String>(endYear.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TermsCompanion(')
+          ..write('id: $id, ')
+          ..write('term: $term, ')
+          ..write('startYear: $startYear, ')
+          ..write('endYear: $endYear, ')
+          ..write('synced: $synced')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -45,12 +389,13 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
   );
   static const VerificationMeta _termMeta = const VerificationMeta('term');
   @override
-  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+  late final GeneratedColumn<int> term = GeneratedColumn<int>(
     'term',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES terms(id) ON DELETE CASCADE',
   );
   static const VerificationMeta _yearLevelMeta = const VerificationMeta(
     'yearLevel',
@@ -83,6 +428,18 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -104,6 +461,7 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     yearLevel,
     section,
     profId,
+    synced,
     createdAt,
   ];
   @override
@@ -175,6 +533,14 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     } else if (isInserting) {
       context.missing(_profIdMeta);
     }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedMeta);
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -203,7 +569,7 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         data['${effectivePrefix}subject_name'],
       )!,
       term: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}term'],
       )!,
       yearLevel: attachedDatabase.typeMapping.read(
@@ -217,6 +583,10 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
       profId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}prof_id'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -235,10 +605,11 @@ class Subject extends DataClass implements Insertable<Subject> {
   final int id;
   final String subjectCode;
   final String subjectName;
-  final String term;
+  final int term;
   final String yearLevel;
   final String section;
   final String profId;
+  final bool synced;
   final DateTime createdAt;
   const Subject({
     required this.id,
@@ -248,6 +619,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     required this.yearLevel,
     required this.section,
     required this.profId,
+    required this.synced,
     required this.createdAt,
   });
   @override
@@ -256,10 +628,11 @@ class Subject extends DataClass implements Insertable<Subject> {
     map['id'] = Variable<int>(id);
     map['subject_code'] = Variable<String>(subjectCode);
     map['subject_name'] = Variable<String>(subjectName);
-    map['term'] = Variable<String>(term);
+    map['term'] = Variable<int>(term);
     map['year_level'] = Variable<String>(yearLevel);
     map['section'] = Variable<String>(section);
     map['prof_id'] = Variable<String>(profId);
+    map['synced'] = Variable<bool>(synced);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -273,6 +646,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       yearLevel: Value(yearLevel),
       section: Value(section),
       profId: Value(profId),
+      synced: Value(synced),
       createdAt: Value(createdAt),
     );
   }
@@ -286,10 +660,11 @@ class Subject extends DataClass implements Insertable<Subject> {
       id: serializer.fromJson<int>(json['id']),
       subjectCode: serializer.fromJson<String>(json['subjectCode']),
       subjectName: serializer.fromJson<String>(json['subjectName']),
-      term: serializer.fromJson<String>(json['term']),
+      term: serializer.fromJson<int>(json['term']),
       yearLevel: serializer.fromJson<String>(json['yearLevel']),
       section: serializer.fromJson<String>(json['section']),
       profId: serializer.fromJson<String>(json['profId']),
+      synced: serializer.fromJson<bool>(json['synced']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -300,10 +675,11 @@ class Subject extends DataClass implements Insertable<Subject> {
       'id': serializer.toJson<int>(id),
       'subjectCode': serializer.toJson<String>(subjectCode),
       'subjectName': serializer.toJson<String>(subjectName),
-      'term': serializer.toJson<String>(term),
+      'term': serializer.toJson<int>(term),
       'yearLevel': serializer.toJson<String>(yearLevel),
       'section': serializer.toJson<String>(section),
       'profId': serializer.toJson<String>(profId),
+      'synced': serializer.toJson<bool>(synced),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -312,10 +688,11 @@ class Subject extends DataClass implements Insertable<Subject> {
     int? id,
     String? subjectCode,
     String? subjectName,
-    String? term,
+    int? term,
     String? yearLevel,
     String? section,
     String? profId,
+    bool? synced,
     DateTime? createdAt,
   }) => Subject(
     id: id ?? this.id,
@@ -325,6 +702,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     yearLevel: yearLevel ?? this.yearLevel,
     section: section ?? this.section,
     profId: profId ?? this.profId,
+    synced: synced ?? this.synced,
     createdAt: createdAt ?? this.createdAt,
   );
   Subject copyWithCompanion(SubjectsCompanion data) {
@@ -340,6 +718,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       yearLevel: data.yearLevel.present ? data.yearLevel.value : this.yearLevel,
       section: data.section.present ? data.section.value : this.section,
       profId: data.profId.present ? data.profId.value : this.profId,
+      synced: data.synced.present ? data.synced.value : this.synced,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -354,6 +733,7 @@ class Subject extends DataClass implements Insertable<Subject> {
           ..write('yearLevel: $yearLevel, ')
           ..write('section: $section, ')
           ..write('profId: $profId, ')
+          ..write('synced: $synced, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -368,6 +748,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     yearLevel,
     section,
     profId,
+    synced,
     createdAt,
   );
   @override
@@ -381,6 +762,7 @@ class Subject extends DataClass implements Insertable<Subject> {
           other.yearLevel == this.yearLevel &&
           other.section == this.section &&
           other.profId == this.profId &&
+          other.synced == this.synced &&
           other.createdAt == this.createdAt);
 }
 
@@ -388,10 +770,11 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
   final Value<int> id;
   final Value<String> subjectCode;
   final Value<String> subjectName;
-  final Value<String> term;
+  final Value<int> term;
   final Value<String> yearLevel;
   final Value<String> section;
   final Value<String> profId;
+  final Value<bool> synced;
   final Value<DateTime> createdAt;
   const SubjectsCompanion({
     this.id = const Value.absent(),
@@ -401,31 +784,35 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     this.yearLevel = const Value.absent(),
     this.section = const Value.absent(),
     this.profId = const Value.absent(),
+    this.synced = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SubjectsCompanion.insert({
     this.id = const Value.absent(),
     required String subjectCode,
     required String subjectName,
-    required String term,
+    required int term,
     required String yearLevel,
     required String section,
     required String profId,
+    required bool synced,
     this.createdAt = const Value.absent(),
   }) : subjectCode = Value(subjectCode),
        subjectName = Value(subjectName),
        term = Value(term),
        yearLevel = Value(yearLevel),
        section = Value(section),
-       profId = Value(profId);
+       profId = Value(profId),
+       synced = Value(synced);
   static Insertable<Subject> custom({
     Expression<int>? id,
     Expression<String>? subjectCode,
     Expression<String>? subjectName,
-    Expression<String>? term,
+    Expression<int>? term,
     Expression<String>? yearLevel,
     Expression<String>? section,
     Expression<String>? profId,
+    Expression<bool>? synced,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -436,6 +823,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       if (yearLevel != null) 'year_level': yearLevel,
       if (section != null) 'section': section,
       if (profId != null) 'prof_id': profId,
+      if (synced != null) 'synced': synced,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -444,10 +832,11 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Value<int>? id,
     Value<String>? subjectCode,
     Value<String>? subjectName,
-    Value<String>? term,
+    Value<int>? term,
     Value<String>? yearLevel,
     Value<String>? section,
     Value<String>? profId,
+    Value<bool>? synced,
     Value<DateTime>? createdAt,
   }) {
     return SubjectsCompanion(
@@ -458,6 +847,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       yearLevel: yearLevel ?? this.yearLevel,
       section: section ?? this.section,
       profId: profId ?? this.profId,
+      synced: synced ?? this.synced,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -475,7 +865,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       map['subject_name'] = Variable<String>(subjectName.value);
     }
     if (term.present) {
-      map['term'] = Variable<String>(term.value);
+      map['term'] = Variable<int>(term.value);
     }
     if (yearLevel.present) {
       map['year_level'] = Variable<String>(yearLevel.value);
@@ -485,6 +875,9 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     }
     if (profId.present) {
       map['prof_id'] = Variable<String>(profId.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -502,6 +895,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
           ..write('yearLevel: $yearLevel, ')
           ..write('section: $section, ')
           ..write('profId: $profId, ')
+          ..write('synced: $synced, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -570,16 +964,26 @@ class $SchedulesTable extends Schedules
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _roomNumberMeta = const VerificationMeta(
-    'roomNumber',
-  );
+  static const VerificationMeta _roomMeta = const VerificationMeta('room');
   @override
-  late final GeneratedColumn<String> roomNumber = GeneratedColumn<String>(
-    'room_number',
+  late final GeneratedColumn<String> room = GeneratedColumn<String>(
+    'room',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -600,7 +1004,8 @@ class $SchedulesTable extends Schedules
     day,
     startTime,
     endTime,
-    roomNumber,
+    room,
+    synced,
     createdAt,
   ];
   @override
@@ -650,11 +1055,19 @@ class $SchedulesTable extends Schedules
     } else if (isInserting) {
       context.missing(_endTimeMeta);
     }
-    if (data.containsKey('room_number')) {
+    if (data.containsKey('room')) {
       context.handle(
-        _roomNumberMeta,
-        roomNumber.isAcceptableOrUnknown(data['room_number']!, _roomNumberMeta),
+        _roomMeta,
+        room.isAcceptableOrUnknown(data['room']!, _roomMeta),
       );
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -691,10 +1104,14 @@ class $SchedulesTable extends Schedules
         DriftSqlType.string,
         data['${effectivePrefix}end_time'],
       )!,
-      roomNumber: attachedDatabase.typeMapping.read(
+      room: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}room_number'],
+        data['${effectivePrefix}room'],
       ),
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -714,7 +1131,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
   final String day;
   final String startTime;
   final String endTime;
-  final String? roomNumber;
+  final String? room;
+  final bool synced;
   final DateTime createdAt;
   const Schedule({
     required this.id,
@@ -722,7 +1140,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     required this.day,
     required this.startTime,
     required this.endTime,
-    this.roomNumber,
+    this.room,
+    required this.synced,
     required this.createdAt,
   });
   @override
@@ -733,9 +1152,10 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     map['day'] = Variable<String>(day);
     map['start_time'] = Variable<String>(startTime);
     map['end_time'] = Variable<String>(endTime);
-    if (!nullToAbsent || roomNumber != null) {
-      map['room_number'] = Variable<String>(roomNumber);
+    if (!nullToAbsent || room != null) {
+      map['room'] = Variable<String>(room);
     }
+    map['synced'] = Variable<bool>(synced);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -747,9 +1167,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       day: Value(day),
       startTime: Value(startTime),
       endTime: Value(endTime),
-      roomNumber: roomNumber == null && nullToAbsent
-          ? const Value.absent()
-          : Value(roomNumber),
+      room: room == null && nullToAbsent ? const Value.absent() : Value(room),
+      synced: Value(synced),
       createdAt: Value(createdAt),
     );
   }
@@ -765,7 +1184,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       day: serializer.fromJson<String>(json['day']),
       startTime: serializer.fromJson<String>(json['startTime']),
       endTime: serializer.fromJson<String>(json['endTime']),
-      roomNumber: serializer.fromJson<String?>(json['roomNumber']),
+      room: serializer.fromJson<String?>(json['room']),
+      synced: serializer.fromJson<bool>(json['synced']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -778,7 +1198,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       'day': serializer.toJson<String>(day),
       'startTime': serializer.toJson<String>(startTime),
       'endTime': serializer.toJson<String>(endTime),
-      'roomNumber': serializer.toJson<String?>(roomNumber),
+      'room': serializer.toJson<String?>(room),
+      'synced': serializer.toJson<bool>(synced),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -789,7 +1210,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     String? day,
     String? startTime,
     String? endTime,
-    Value<String?> roomNumber = const Value.absent(),
+    Value<String?> room = const Value.absent(),
+    bool? synced,
     DateTime? createdAt,
   }) => Schedule(
     id: id ?? this.id,
@@ -797,7 +1219,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     day: day ?? this.day,
     startTime: startTime ?? this.startTime,
     endTime: endTime ?? this.endTime,
-    roomNumber: roomNumber.present ? roomNumber.value : this.roomNumber,
+    room: room.present ? room.value : this.room,
+    synced: synced ?? this.synced,
     createdAt: createdAt ?? this.createdAt,
   );
   Schedule copyWithCompanion(SchedulesCompanion data) {
@@ -807,9 +1230,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       day: data.day.present ? data.day.value : this.day,
       startTime: data.startTime.present ? data.startTime.value : this.startTime,
       endTime: data.endTime.present ? data.endTime.value : this.endTime,
-      roomNumber: data.roomNumber.present
-          ? data.roomNumber.value
-          : this.roomNumber,
+      room: data.room.present ? data.room.value : this.room,
+      synced: data.synced.present ? data.synced.value : this.synced,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -822,7 +1244,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           ..write('day: $day, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('roomNumber: $roomNumber, ')
+          ..write('room: $room, ')
+          ..write('synced: $synced, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -835,7 +1258,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     day,
     startTime,
     endTime,
-    roomNumber,
+    room,
+    synced,
     createdAt,
   );
   @override
@@ -847,7 +1271,8 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           other.day == this.day &&
           other.startTime == this.startTime &&
           other.endTime == this.endTime &&
-          other.roomNumber == this.roomNumber &&
+          other.room == this.room &&
+          other.synced == this.synced &&
           other.createdAt == this.createdAt);
 }
 
@@ -857,7 +1282,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
   final Value<String> day;
   final Value<String> startTime;
   final Value<String> endTime;
-  final Value<String?> roomNumber;
+  final Value<String?> room;
+  final Value<bool> synced;
   final Value<DateTime> createdAt;
   const SchedulesCompanion({
     this.id = const Value.absent(),
@@ -865,7 +1291,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     this.day = const Value.absent(),
     this.startTime = const Value.absent(),
     this.endTime = const Value.absent(),
-    this.roomNumber = const Value.absent(),
+    this.room = const Value.absent(),
+    this.synced = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   SchedulesCompanion.insert({
@@ -874,19 +1301,22 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     required String day,
     required String startTime,
     required String endTime,
-    this.roomNumber = const Value.absent(),
+    this.room = const Value.absent(),
+    required bool synced,
     this.createdAt = const Value.absent(),
   }) : subjectId = Value(subjectId),
        day = Value(day),
        startTime = Value(startTime),
-       endTime = Value(endTime);
+       endTime = Value(endTime),
+       synced = Value(synced);
   static Insertable<Schedule> custom({
     Expression<int>? id,
     Expression<int>? subjectId,
     Expression<String>? day,
     Expression<String>? startTime,
     Expression<String>? endTime,
-    Expression<String>? roomNumber,
+    Expression<String>? room,
+    Expression<bool>? synced,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -895,7 +1325,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       if (day != null) 'day': day,
       if (startTime != null) 'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
-      if (roomNumber != null) 'room_number': roomNumber,
+      if (room != null) 'room': room,
+      if (synced != null) 'synced': synced,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -906,7 +1337,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     Value<String>? day,
     Value<String>? startTime,
     Value<String>? endTime,
-    Value<String?>? roomNumber,
+    Value<String?>? room,
+    Value<bool>? synced,
     Value<DateTime>? createdAt,
   }) {
     return SchedulesCompanion(
@@ -915,7 +1347,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       day: day ?? this.day,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
-      roomNumber: roomNumber ?? this.roomNumber,
+      room: room ?? this.room,
+      synced: synced ?? this.synced,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -938,8 +1371,11 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     if (endTime.present) {
       map['end_time'] = Variable<String>(endTime.value);
     }
-    if (roomNumber.present) {
-      map['room_number'] = Variable<String>(roomNumber.value);
+    if (room.present) {
+      map['room'] = Variable<String>(room.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -955,7 +1391,8 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
           ..write('day: $day, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('roomNumber: $roomNumber, ')
+          ..write('room: $room, ')
+          ..write('synced: $synced, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -965,15 +1402,27 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $TermsTable terms = $TermsTable(this);
   late final $SubjectsTable subjects = $SubjectsTable(this);
   late final $SchedulesTable schedules = $SchedulesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [subjects, schedules];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    terms,
+    subjects,
+    schedules,
+  ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'terms',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('subjects', kind: UpdateKind.delete)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'subjects',
@@ -984,15 +1433,301 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
+typedef $$TermsTableCreateCompanionBuilder =
+    TermsCompanion Function({
+      Value<int> id,
+      required String term,
+      required String startYear,
+      required String endYear,
+      required bool synced,
+    });
+typedef $$TermsTableUpdateCompanionBuilder =
+    TermsCompanion Function({
+      Value<int> id,
+      Value<String> term,
+      Value<String> startYear,
+      Value<String> endYear,
+      Value<bool> synced,
+    });
+
+final class $$TermsTableReferences
+    extends BaseReferences<_$AppDatabase, $TermsTable, Term> {
+  $$TermsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SubjectsTable, List<Subject>> _subjectsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.subjects,
+    aliasName: $_aliasNameGenerator(db.terms.id, db.subjects.term),
+  );
+
+  $$SubjectsTableProcessedTableManager get subjectsRefs {
+    final manager = $$SubjectsTableTableManager(
+      $_db,
+      $_db.subjects,
+    ).filter((f) => f.term.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_subjectsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TermsTableFilterComposer extends Composer<_$AppDatabase, $TermsTable> {
+  $$TermsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get startYear => $composableBuilder(
+    column: $table.startYear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get endYear => $composableBuilder(
+    column: $table.endYear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> subjectsRefs(
+    Expression<bool> Function($$SubjectsTableFilterComposer f) f,
+  ) {
+    final $$SubjectsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.subjects,
+      getReferencedColumn: (t) => t.term,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SubjectsTableFilterComposer(
+            $db: $db,
+            $table: $db.subjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TermsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TermsTable> {
+  $$TermsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get startYear => $composableBuilder(
+    column: $table.startYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get endYear => $composableBuilder(
+    column: $table.endYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TermsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TermsTable> {
+  $$TermsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get term =>
+      $composableBuilder(column: $table.term, builder: (column) => column);
+
+  GeneratedColumn<String> get startYear =>
+      $composableBuilder(column: $table.startYear, builder: (column) => column);
+
+  GeneratedColumn<String> get endYear =>
+      $composableBuilder(column: $table.endYear, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  Expression<T> subjectsRefs<T extends Object>(
+    Expression<T> Function($$SubjectsTableAnnotationComposer a) f,
+  ) {
+    final $$SubjectsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.subjects,
+      getReferencedColumn: (t) => t.term,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SubjectsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.subjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TermsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TermsTable,
+          Term,
+          $$TermsTableFilterComposer,
+          $$TermsTableOrderingComposer,
+          $$TermsTableAnnotationComposer,
+          $$TermsTableCreateCompanionBuilder,
+          $$TermsTableUpdateCompanionBuilder,
+          (Term, $$TermsTableReferences),
+          Term,
+          PrefetchHooks Function({bool subjectsRefs})
+        > {
+  $$TermsTableTableManager(_$AppDatabase db, $TermsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TermsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TermsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TermsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> term = const Value.absent(),
+                Value<String> startYear = const Value.absent(),
+                Value<String> endYear = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+              }) => TermsCompanion(
+                id: id,
+                term: term,
+                startYear: startYear,
+                endYear: endYear,
+                synced: synced,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String term,
+                required String startYear,
+                required String endYear,
+                required bool synced,
+              }) => TermsCompanion.insert(
+                id: id,
+                term: term,
+                startYear: startYear,
+                endYear: endYear,
+                synced: synced,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$TermsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({subjectsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (subjectsRefs) db.subjects],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (subjectsRefs)
+                    await $_getPrefetchedData<Term, $TermsTable, Subject>(
+                      currentTable: table,
+                      referencedTable: $$TermsTableReferences
+                          ._subjectsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TermsTableReferences(db, table, p0).subjectsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.term == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TermsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TermsTable,
+      Term,
+      $$TermsTableFilterComposer,
+      $$TermsTableOrderingComposer,
+      $$TermsTableAnnotationComposer,
+      $$TermsTableCreateCompanionBuilder,
+      $$TermsTableUpdateCompanionBuilder,
+      (Term, $$TermsTableReferences),
+      Term,
+      PrefetchHooks Function({bool subjectsRefs})
+    >;
 typedef $$SubjectsTableCreateCompanionBuilder =
     SubjectsCompanion Function({
       Value<int> id,
       required String subjectCode,
       required String subjectName,
-      required String term,
+      required int term,
       required String yearLevel,
       required String section,
       required String profId,
+      required bool synced,
       Value<DateTime> createdAt,
     });
 typedef $$SubjectsTableUpdateCompanionBuilder =
@@ -1000,16 +1735,34 @@ typedef $$SubjectsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> subjectCode,
       Value<String> subjectName,
-      Value<String> term,
+      Value<int> term,
       Value<String> yearLevel,
       Value<String> section,
       Value<String> profId,
+      Value<bool> synced,
       Value<DateTime> createdAt,
     });
 
 final class $$SubjectsTableReferences
     extends BaseReferences<_$AppDatabase, $SubjectsTable, Subject> {
   $$SubjectsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TermsTable _termTable(_$AppDatabase db) =>
+      db.terms.createAlias($_aliasNameGenerator(db.subjects.term, db.terms.id));
+
+  $$TermsTableProcessedTableManager get term {
+    final $_column = $_itemColumn<int>('term')!;
+
+    final manager = $$TermsTableTableManager(
+      $_db,
+      $_db.terms,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_termTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$SchedulesTable, List<Schedule>>
   _schedulesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -1054,11 +1807,6 @@ class $$SubjectsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get term => $composableBuilder(
-    column: $table.term,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get yearLevel => $composableBuilder(
     column: $table.yearLevel,
     builder: (column) => ColumnFilters(column),
@@ -1074,10 +1822,38 @@ class $$SubjectsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$TermsTableFilterComposer get term {
+    final $$TermsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.term,
+      referencedTable: $db.terms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TermsTableFilterComposer(
+            $db: $db,
+            $table: $db.terms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> schedulesRefs(
     Expression<bool> Function($$SchedulesTableFilterComposer f) f,
@@ -1129,11 +1905,6 @@ class $$SubjectsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get term => $composableBuilder(
-    column: $table.term,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get yearLevel => $composableBuilder(
     column: $table.yearLevel,
     builder: (column) => ColumnOrderings(column),
@@ -1149,10 +1920,38 @@ class $$SubjectsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$TermsTableOrderingComposer get term {
+    final $$TermsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.term,
+      referencedTable: $db.terms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TermsTableOrderingComposer(
+            $db: $db,
+            $table: $db.terms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SubjectsTableAnnotationComposer
@@ -1177,9 +1976,6 @@ class $$SubjectsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get term =>
-      $composableBuilder(column: $table.term, builder: (column) => column);
-
   GeneratedColumn<String> get yearLevel =>
       $composableBuilder(column: $table.yearLevel, builder: (column) => column);
 
@@ -1189,8 +1985,34 @@ class $$SubjectsTableAnnotationComposer
   GeneratedColumn<String> get profId =>
       $composableBuilder(column: $table.profId, builder: (column) => column);
 
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$TermsTableAnnotationComposer get term {
+    final $$TermsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.term,
+      referencedTable: $db.terms,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TermsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.terms,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> schedulesRefs<T extends Object>(
     Expression<T> Function($$SchedulesTableAnnotationComposer a) f,
@@ -1231,7 +2053,7 @@ class $$SubjectsTableTableManager
           $$SubjectsTableUpdateCompanionBuilder,
           (Subject, $$SubjectsTableReferences),
           Subject,
-          PrefetchHooks Function({bool schedulesRefs})
+          PrefetchHooks Function({bool term, bool schedulesRefs})
         > {
   $$SubjectsTableTableManager(_$AppDatabase db, $SubjectsTable table)
     : super(
@@ -1249,10 +2071,11 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> subjectCode = const Value.absent(),
                 Value<String> subjectName = const Value.absent(),
-                Value<String> term = const Value.absent(),
+                Value<int> term = const Value.absent(),
                 Value<String> yearLevel = const Value.absent(),
                 Value<String> section = const Value.absent(),
                 Value<String> profId = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SubjectsCompanion(
                 id: id,
@@ -1262,6 +2085,7 @@ class $$SubjectsTableTableManager
                 yearLevel: yearLevel,
                 section: section,
                 profId: profId,
+                synced: synced,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -1269,10 +2093,11 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String subjectCode,
                 required String subjectName,
-                required String term,
+                required int term,
                 required String yearLevel,
                 required String section,
                 required String profId,
+                required bool synced,
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SubjectsCompanion.insert(
                 id: id,
@@ -1282,6 +2107,7 @@ class $$SubjectsTableTableManager
                 yearLevel: yearLevel,
                 section: section,
                 profId: profId,
+                synced: synced,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -1292,11 +2118,42 @@ class $$SubjectsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({schedulesRefs = false}) {
+          prefetchHooksCallback: ({term = false, schedulesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [if (schedulesRefs) db.schedules],
-              addJoins: null,
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (term) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.term,
+                                referencedTable: $$SubjectsTableReferences
+                                    ._termTable(db),
+                                referencedColumn: $$SubjectsTableReferences
+                                    ._termTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (schedulesRefs)
@@ -1337,7 +2194,7 @@ typedef $$SubjectsTableProcessedTableManager =
       $$SubjectsTableUpdateCompanionBuilder,
       (Subject, $$SubjectsTableReferences),
       Subject,
-      PrefetchHooks Function({bool schedulesRefs})
+      PrefetchHooks Function({bool term, bool schedulesRefs})
     >;
 typedef $$SchedulesTableCreateCompanionBuilder =
     SchedulesCompanion Function({
@@ -1346,7 +2203,8 @@ typedef $$SchedulesTableCreateCompanionBuilder =
       required String day,
       required String startTime,
       required String endTime,
-      Value<String?> roomNumber,
+      Value<String?> room,
+      required bool synced,
       Value<DateTime> createdAt,
     });
 typedef $$SchedulesTableUpdateCompanionBuilder =
@@ -1356,7 +2214,8 @@ typedef $$SchedulesTableUpdateCompanionBuilder =
       Value<String> day,
       Value<String> startTime,
       Value<String> endTime,
-      Value<String?> roomNumber,
+      Value<String?> room,
+      Value<bool> synced,
       Value<DateTime> createdAt,
     });
 
@@ -1413,8 +2272,13 @@ class $$SchedulesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get roomNumber => $composableBuilder(
-    column: $table.roomNumber,
+  ColumnFilters<String> get room => $composableBuilder(
+    column: $table.room,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1476,8 +2340,13 @@ class $$SchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get roomNumber => $composableBuilder(
-    column: $table.roomNumber,
+  ColumnOrderings<String> get room => $composableBuilder(
+    column: $table.room,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1531,10 +2400,11 @@ class $$SchedulesTableAnnotationComposer
   GeneratedColumn<String> get endTime =>
       $composableBuilder(column: $table.endTime, builder: (column) => column);
 
-  GeneratedColumn<String> get roomNumber => $composableBuilder(
-    column: $table.roomNumber,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get room =>
+      $composableBuilder(column: $table.room, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1596,7 +2466,8 @@ class $$SchedulesTableTableManager
                 Value<String> day = const Value.absent(),
                 Value<String> startTime = const Value.absent(),
                 Value<String> endTime = const Value.absent(),
-                Value<String?> roomNumber = const Value.absent(),
+                Value<String?> room = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SchedulesCompanion(
                 id: id,
@@ -1604,7 +2475,8 @@ class $$SchedulesTableTableManager
                 day: day,
                 startTime: startTime,
                 endTime: endTime,
-                roomNumber: roomNumber,
+                room: room,
+                synced: synced,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -1614,7 +2486,8 @@ class $$SchedulesTableTableManager
                 required String day,
                 required String startTime,
                 required String endTime,
-                Value<String?> roomNumber = const Value.absent(),
+                Value<String?> room = const Value.absent(),
+                required bool synced,
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SchedulesCompanion.insert(
                 id: id,
@@ -1622,7 +2495,8 @@ class $$SchedulesTableTableManager
                 day: day,
                 startTime: startTime,
                 endTime: endTime,
-                roomNumber: roomNumber,
+                room: room,
+                synced: synced,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -1696,6 +2570,8 @@ typedef $$SchedulesTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$TermsTableTableManager get terms =>
+      $$TermsTableTableManager(_db, _db.terms);
   $$SubjectsTableTableManager get subjects =>
       $$SubjectsTableTableManager(_db, _db.subjects);
   $$SchedulesTableTableManager get schedules =>

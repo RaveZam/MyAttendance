@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:myattendance/core/database/app_database.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:myattendance/core/widgets/get_date_now.dart';
 
 class AddSubjectPage extends StatefulWidget {
   const AddSubjectPage({super.key});
@@ -14,12 +15,13 @@ class AddSubjectPage extends StatefulWidget {
 }
 
 class _AddSubjectPageState extends State<AddSubjectPage> {
+  final db = AppDatabase.instance;
   final _formKey = GlobalKey<FormBuilderState>();
   final List<Map<String, dynamic>> _schedules = [
     {'day': '', 'startTime': '', 'endTime': ''},
   ];
 
-  final List<String> _terms = ['1st Semester', 'Midterm', '2nd Semester'];
+  List<Term> _terms = [];
   final List<String> _gradeLevels = [
     '1st Year',
     '2nd Year',
@@ -34,14 +36,25 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
     'Friday',
   ];
 
-  final db = AppDatabase.instance;
+  @override
+  void initState() {
+    super.initState();
+    loadTerms();
+    db.ensureTermsExist(db);
+  }
+
+  Future<void> loadTerms() async {
+    final terms = await db.getTerms();
+    setState(() {
+      _terms = terms;
+    });
+  }
 
   void createSubject() async {
     if (_formKey.currentState!.saveAndValidate()) {
       final subject = _formKey.currentState!.value;
       final profId = Supabase.instance.client.auth.currentUser?.id;
 
-      // Create schedule objects from the _schedules data
       List<Map<String, dynamic>> scheduleObjects = [];
       for (int i = 0; i < _schedules.length; i++) {
         if (_schedules[i]['day'].isNotEmpty) {
@@ -50,12 +63,12 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             'startTime': _schedules[i]['startTime'],
             'endTime': _schedules[i]['endTime'],
             'room': _schedules[i]['room'] ?? '',
+            'synced': false,
           });
         }
       }
 
       try {
-        // Insert the subject first
         final subjectCompanion = SubjectsCompanion(
           subjectCode: drift.Value(subject['subjectCode']),
           subjectName: drift.Value(subject['subjectName']),
@@ -63,11 +76,11 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           yearLevel: drift.Value(subject['yearLevel']),
           section: drift.Value(subject['section']),
           profId: drift.Value(profId.toString()),
+          synced: drift.Value(false),
         );
 
         final subjectId = await db.insertSubject(subjectCompanion);
 
-        // Insert schedules if any exist
         if (scheduleObjects.isNotEmpty) {
           List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
             schedule,
@@ -77,14 +90,14 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               day: drift.Value(schedule['day']),
               startTime: drift.Value(schedule['startTime']),
               endTime: drift.Value(schedule['endTime']),
-              roomNumber: drift.Value(schedule['room']),
+              room: drift.Value(schedule['room']),
+              synced: drift.Value(false),
             );
           }).toList();
 
           await db.insertSchedules(scheduleCompanions);
         }
 
-        // Debug print the structured data
         debugPrint('Subject: ${subject.toString()}');
         debugPrint('Schedules: ${scheduleObjects.toString()}');
 
@@ -158,19 +171,19 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 20),
 
-              // Term Dropdown
-              FormBuilderDropdown<String>(
+              FormBuilderDropdown<Term>(
                 name: 'term',
                 decoration: const InputDecoration(
                   labelText: 'Term',
                   hintText: 'Select term',
                   border: OutlineInputBorder(),
-                  // suffixIcon: Icon(Icons.keyboard_arrow_down),
                 ),
                 items: _terms
                     .map(
-                      (term) =>
-                          DropdownMenuItem(value: term, child: Text(term)),
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Text("${t.term} (${t.startYear}-${t.endYear})"),
+                      ),
                     )
                     .toList(),
                 validator: FormBuilderValidators.required(),
