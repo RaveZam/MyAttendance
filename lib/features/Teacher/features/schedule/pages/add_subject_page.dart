@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:myattendance/core/database/app_database.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:myattendance/core/widgets/get_date_now.dart';
 
 class AddSubjectPage extends StatefulWidget {
   const AddSubjectPage({super.key});
@@ -40,7 +39,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   void initState() {
     super.initState();
     loadTerms();
-    db.ensureTermsExist(db);
   }
 
   Future<void> loadTerms() async {
@@ -54,6 +52,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
     if (_formKey.currentState!.saveAndValidate()) {
       final subject = _formKey.currentState!.value;
       final profId = Supabase.instance.client.auth.currentUser?.id;
+
+      debugPrint("Subject: ${subject.toString()}");
 
       List<Map<String, dynamic>> scheduleObjects = [];
       for (int i = 0; i < _schedules.length; i++) {
@@ -72,7 +72,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
         final subjectCompanion = SubjectsCompanion(
           subjectCode: drift.Value(subject['subjectCode']),
           subjectName: drift.Value(subject['subjectName']),
-          term: drift.Value(subject['term']),
           yearLevel: drift.Value(subject['yearLevel']),
           section: drift.Value(subject['section']),
           profId: drift.Value(profId.toString()),
@@ -87,6 +86,7 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           ) {
             return SchedulesCompanion(
               subjectId: drift.Value(subjectId),
+              termId: drift.Value(subject['term'].id),
               day: drift.Value(schedule['day']),
               startTime: drift.Value(schedule['startTime']),
               endTime: drift.Value(schedule['endTime']),

@@ -19,9 +19,9 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void initState() {
     super.initState();
-    // loadSubjects();
-    // loadSchedule();
-    db.clearAllData();
+    loadSchedule();
+    loadSubjects();
+    db.ensureTermsExist(db);
   }
 
   void loadSubjects() async {
