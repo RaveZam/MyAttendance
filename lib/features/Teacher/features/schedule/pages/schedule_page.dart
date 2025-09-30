@@ -49,13 +49,6 @@ class _SchedulePageState extends State<SchedulePage> {
         'synced': term.synced,
       };
 
-      // var matchingTerm = _scheduleData.firstWhere(
-      //   (sched) => sched['termId'] == termData?.id.toString(),
-      //   orElse: () => {},
-      // );
-
-      // debugPrint(matchingTerm.toString());
-
       var combined = {
         ...schedule,
         'subjectData': matchingSubject,

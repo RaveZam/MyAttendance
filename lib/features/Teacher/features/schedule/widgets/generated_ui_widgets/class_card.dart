@@ -32,7 +32,17 @@ class ClassCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ClassDetailsPage(classID: int.parse(classID)),
+            builder: (context) => ClassDetailsPage(
+              subject: subject,
+              classID: classID,
+              courseCode: courseCode,
+              sessions: sessions,
+              room: room,
+              startTime: startTime,
+              endTime: endTime,
+              status: 'SCHEDULED',
+              semester: semester,
+            ),
           ),
         );
       },

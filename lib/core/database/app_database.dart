@@ -98,10 +98,8 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Subject>> getAllSubjects() => select(subjects).get();
   Future<List<Schedule>> getAllSchedules() => select(schedules).get();
 
-  Future<List<Schedule>> getSchedulesBySubjectId(int subjectId) {
-    return (select(
-      schedules,
-    )..where((tbl) => tbl.subjectId.equals(subjectId))).get();
+  Future<List<Schedule>> getSchedulesBySubjectId(int id) {
+    return (select(schedules)..where((tbl) => tbl.subjectId.equals(id))).get();
   }
 
   Future<void> deleteAllSchedules() => delete(schedules).go();

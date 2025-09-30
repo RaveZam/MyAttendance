@@ -1,53 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
+import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/class_summary.dart';
 import 'package:myattendance/features/Teacher/features/students_list/pages/student_page.dart';
 
 class ClassDetailsPage extends StatefulWidget {
-  final int classID;
+  final String subject;
+  final String courseCode;
+  final String room;
+  final String startTime;
+  final String endTime;
+  final String status;
+  final String semester;
+  final String classID;
+  final Iterable sessions;
 
-  const ClassDetailsPage({super.key, required this.classID});
+  const ClassDetailsPage({
+    super.key,
+    required this.subject,
+    required this.courseCode,
+    required this.room,
+    required this.startTime,
+    required this.endTime,
+    required this.status,
+    required this.semester,
+    required this.classID,
+    required this.sessions,
+  });
+
   @override
   State<ClassDetailsPage> createState() => _ClassDetailsPageState();
 }
 
 class _ClassDetailsPageState extends State<ClassDetailsPage> {
-  Schedule? classDetails;
-
-  void loadClassDetails() async {
-    // final classDetails = await AppDatabase().getScheduleById(widget.classID);
-    // debugPrint(classDetails?.toJson().toString());
-    // setState(() {
-    //   this.classDetails = classDetails;
-    // });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    loadClassDetails();
-  }
+  final db = AppDatabase.instance;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: _ClassDetailsAppBar(),
+      appBar: const _ClassDetailsAppBar(),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // _ClassSummaryCard(
-            //   classID: widget.classID,
-            //   classDetails:
-            //       classDetails ??
-            //       Schedule(id: 0, subject: '', day: '', time: '', room: ''),
-            // ),
+            ClassSummaryCard(classID: widget.classID, subject: widget.subject),
             const SizedBox(height: 12),
-
             const SizedBox(height: 24),
-            _QuickActionsSection(),
+            const _QuickActionsSection(),
             const SizedBox(height: 24),
-            _FeatureListSection(),
+            const _FeatureListSection(),
           ],
         ),
       ),
@@ -57,6 +58,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
 
 class _ClassDetailsAppBar extends StatelessWidget
     implements PreferredSizeWidget {
+  const _ClassDetailsAppBar();
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -80,7 +83,7 @@ class _ClassDetailsAppBar extends StatelessWidget
         IconButton(
           icon: Icon(Icons.more_vert, color: scheme.onSurface),
           onPressed: () {
-            // Handle menu options
+            // TODO: menu options
           },
         ),
       ],
@@ -89,79 +92,6 @@ class _ClassDetailsAppBar extends StatelessWidget
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
-
-class _ClassSummaryCard extends StatelessWidget {
-  final int classID;
-  final Schedule classDetails;
-  const _ClassSummaryCard({required this.classID, required this.classDetails});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: scheme.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.school, color: scheme.onPrimary, size: 30),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Class $classID',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
-          ),
-          // Text(
-          //   classDetails.subject,
-          //   style: TextStyle(
-          //     fontSize: 20,
-          //     fontWeight: FontWeight.w700,
-          //     color: scheme.onSurface,
-          //   ),
-          // ),
-          const SizedBox(height: 6),
-          Text(
-            'Spring Semester 2025',
-            style: TextStyle(
-              color: scheme.onSurface.withOpacity(0.7),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: const [
-              _StatItem(number: '124', label: 'Students'),
-              _StatItem(number: '32', label: 'Sessions'),
-              _StatItem(number: '87%', label: 'Avg Rate'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _StatItem extends StatelessWidget {
@@ -197,6 +127,8 @@ class _StatItem extends StatelessWidget {
 }
 
 class _QuickActionsSection extends StatelessWidget {
+  const _QuickActionsSection();
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -252,39 +184,35 @@ class _QuickActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 78,
-        decoration: BoxDecoration(
-          color: isPrimary ? scheme.primary : scheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: isPrimary ? null : Border.all(color: scheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isPrimary ? scheme.onPrimary : scheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isPrimary ? scheme.onPrimary : scheme.onSurface,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+    return Material(
+      color: isPrimary ? scheme.primary : scheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          height: 78,
+          decoration: BoxDecoration(
+            border: isPrimary ? null : Border.all(color: scheme.outlineVariant),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isPrimary ? scheme.onPrimary : scheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isPrimary ? scheme.onPrimary : scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -292,6 +220,8 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _FeatureListSection extends StatelessWidget {
+  const _FeatureListSection();
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -318,59 +248,49 @@ class _FeatureListSection extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => (StudentPage())),
+                MaterialPageRoute(builder: (context) => const StudentPage()),
               );
             },
           ),
-          _Divider(),
+          const _Divider(),
           _FeatureListItem(
             icon: Icons.trending_up,
             title: 'Attendance History',
             description: 'View attendance analytics',
             trailing: '87%',
-            onTap: () {
-              debugPrint('Attendance History');
-            },
+            onTap: () => debugPrint('Attendance History'),
           ),
-          _Divider(),
+          const _Divider(),
           _FeatureListItem(
             icon: Icons.calendar_month,
             title: 'Class Sessions',
             description: 'View all session records',
             trailing: '32',
-            onTap: () {
-              debugPrint('Class Sessions');
-            },
+            onTap: () => debugPrint('Class Sessions'),
           ),
-          _Divider(),
+          const _Divider(),
           _FeatureListItem(
             icon: Icons.schedule,
             title: 'Schedule',
             description: 'Manage class timetable',
             trailing: '',
-            onTap: () {
-              debugPrint('Schedule');
-            },
+            onTap: () => debugPrint('Schedule'),
           ),
-          _Divider(),
+          const _Divider(),
           _FeatureListItem(
             icon: Icons.assignment,
             title: 'Reports',
             description: 'Generate attendance reports',
             trailing: '',
-            onTap: () {
-              debugPrint('Reports');
-            },
+            onTap: () => debugPrint('Reports'),
           ),
-          _Divider(),
+          const _Divider(),
           _FeatureListItem(
             icon: Icons.settings,
             title: 'Class Settings',
             description: 'Configure class preferences',
             trailing: '',
-            onTap: () {
-              debugPrint('Class Settings');
-            },
+            onTap: () => debugPrint('Class Settings'),
           ),
         ],
       ),
@@ -396,53 +316,48 @@ class _FeatureListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: scheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: scheme.onSurfaceVariant, size: 20),
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: scheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(8),
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-            color: scheme.onSurface,
-          ),
-        ),
-        subtitle: Text(
-          description,
-          style: TextStyle(
-            color: scheme.onSurface.withOpacity(0.7),
-            fontSize: 13,
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (trailing.isNotEmpty)
-              Text(
-                trailing,
-                style: TextStyle(
-                  color: scheme.onSurface.withOpacity(0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            const SizedBox(width: 8),
-            Icon(Icons.arrow_forward_ios, color: scheme.outline, size: 16),
-          ],
-        ),
-        onTap: () {
-          onTap();
-        },
+        child: Icon(icon, color: scheme.onSurfaceVariant, size: 20),
       ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+          color: scheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        description,
+        style: TextStyle(
+          color: scheme.onSurface.withOpacity(0.7),
+          fontSize: 13,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailing.isNotEmpty)
+            Text(
+              trailing,
+              style: TextStyle(
+                color: scheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          const SizedBox(width: 8),
+          Icon(Icons.arrow_forward_ios, color: scheme.outline, size: 16),
+        ],
+      ),
+      onTap: onTap,
     );
   }
 }
