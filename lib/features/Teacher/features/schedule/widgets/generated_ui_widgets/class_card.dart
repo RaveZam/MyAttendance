@@ -72,136 +72,178 @@ class ClassCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row with status, semester, and menu
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    // Status tag
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Semester
-                    Text(
-                      semester,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-                // Three dots menu
-                Icon(Icons.more_vert, color: Colors.grey[600], size: 20),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Course title
-            Text(
-              subject,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Course code and location
+            // Top row with icon, title, and next session
             Row(
               children: [
-                Text(
-                  courseCode,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
-                const SizedBox(width: 8),
+                // Subject Icon
                 Container(
-                  width: 4,
-                  height: 4,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
-                    color: Colors.grey[500],
-                    shape: BoxShape.circle,
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getSubjectIcon(subject),
+                    color: Colors.white,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  room,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                const SizedBox(width: 16),
+                // Course Title and Semester
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subject,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        semester,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+                const SizedBox(width: 16),
+                // Right Section - Next Session Information
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 6),
-                    Text(
-                      startTime,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                    Text("-"),
-                    Text(
-                      endTime,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                    const SizedBox(width: 12),
+                    // Status Indicator
                     Container(
-                      width: 4,
-                      height: 4,
+                      width: 8,
+                      height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.grey[500],
+                        color: Colors.grey[600],
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                    const SizedBox(height: 6),
+                    // Next Session Time
+                    Text(
+                      'Next: ${_formatTo12Hour(startTime)}', // TODO: Replace with actual next session time calculation
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.end,
+                    ),
                   ],
                 ),
-
-                // View button
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'View',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ],
+            ),
+            const SizedBox(height: 16),
+            // Statistics Row - Full Width
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '124 Students', // TODO: Replace with actual student count from database
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                  Text(
+                    '32 Sessions', // TODO: Replace with actual session count from database
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                  Text(
+                    '87% Avg', // TODO: Replace with actual attendance rate from database
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatTo12Hour(String timeString) {
+    if (timeString.isEmpty || timeString == 'Unknown') {
+      return timeString;
+    }
+
+    try {
+      // Handle different time formats
+      if (timeString.contains(':')) {
+        // Parse time string (e.g., "09:00", "14:30", "9:00 AM")
+        List<String> parts = timeString.split(':');
+        if (parts.length >= 2) {
+          int hour = int.parse(parts[0]);
+          String minutes = parts[1].split(
+            ' ',
+          )[0]; // Remove AM/PM if already present
+
+          // If already in 12-hour format, return as is
+          if (timeString.toUpperCase().contains('AM') ||
+              timeString.toUpperCase().contains('PM')) {
+            return timeString;
+          }
+
+          // Convert 24-hour to 12-hour format
+          String period = hour >= 12 ? 'PM' : 'AM';
+          int displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+
+          return '$displayHour:$minutes $period';
+        }
+      }
+
+      // If parsing fails, return original string
+      return timeString;
+    } catch (e) {
+      debugPrint('Error formatting time: $e');
+      return timeString;
+    }
+  }
+
+  IconData _getSubjectIcon(String subject) {
+    // Map subject names to appropriate icons
+    final subjectLower = subject.toLowerCase();
+
+    if (subjectLower.contains('math') ||
+        subjectLower.contains('calculus') ||
+        subjectLower.contains('algebra')) {
+      return Icons.calculate;
+    } else if (subjectLower.contains('physics')) {
+      return Icons.science;
+    } else if (subjectLower.contains('chemistry')) {
+      return Icons.biotech;
+    } else if (subjectLower.contains('computer') ||
+        subjectLower.contains('programming') ||
+        subjectLower.contains('software')) {
+      return Icons.computer;
+    } else if (subjectLower.contains('biology') ||
+        subjectLower.contains('life')) {
+      return Icons.eco;
+    } else if (subjectLower.contains('english') ||
+        subjectLower.contains('literature') ||
+        subjectLower.contains('writing')) {
+      return Icons.menu_book;
+    } else if (subjectLower.contains('history') ||
+        subjectLower.contains('social')) {
+      return Icons.history_edu;
+    } else if (subjectLower.contains('art') ||
+        subjectLower.contains('design')) {
+      return Icons.palette;
+    } else if (subjectLower.contains('music')) {
+      return Icons.music_note;
+    } else if (subjectLower.contains('business') ||
+        subjectLower.contains('economics')) {
+      return Icons.business;
+    } else {
+      return Icons.school; // Default icon
+    }
   }
 }
