@@ -50,24 +50,40 @@ class ClassList extends StatelessWidget {
     return classesBySubject.entries.map((entry) {
       final subject = entry.key;
       final classSessions = entry.value;
+      // debugPrint("Class Sessions ${classSessions.toString()}");
+
+      final sessions = classSessions.map<Map<String, dynamic>>((s) {
+        return {
+          "day": s['day'],
+          "startTime": s['startTime'],
+          "endTime": s['endTime'],
+          "room": s['room'],
+        };
+      });
 
       final firstSession = classSessions.first;
+      debugPrint("first session: ${firstSession.toString()}");
       final startTime = firstSession['startTime'].toString();
       final endTime = firstSession['endTime'].toString();
       final courseCode =
           firstSession['subjectData']['subjectCode']?.toString() ?? "0";
 
       final room = firstSession['room']?.toString() ?? 'TBA';
+      final term = firstSession['termData']['term']?.toString() ?? "0";
+      final startYear =
+          firstSession['termData']['startYear']?.toString() ?? "0";
+      final endYear = firstSession['termData']['endYear']?.toString() ?? "0";
 
       return ClassCard(
         subject: subject,
         classID: classSessions.first['id']?.toString() ?? '',
         courseCode: courseCode,
+        sessions: sessions,
         room: room,
         startTime: startTime,
         endTime: endTime,
         status: 'SCHEDULED',
-        semester: 'SPRING 2025',
+        semester: "$term $startYear - $endYear",
       );
     }).toList();
   }

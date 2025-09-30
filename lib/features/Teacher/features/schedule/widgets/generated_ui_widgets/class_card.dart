@@ -10,6 +10,7 @@ class ClassCard extends StatelessWidget {
   final String status;
   final String semester;
   final String classID;
+  final Iterable sessions;
 
   const ClassCard({
     super.key,
@@ -21,6 +22,7 @@ class ClassCard extends StatelessWidget {
     required this.status,
     required this.semester,
     required this.classID,
+    required this.sessions,
   });
 
   @override
@@ -126,7 +128,17 @@ class ClassCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Time, instructor, and view button
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...sessions.map<Widget>((s) {
+                  return Text(
+                    "${s['startTime']} - ${s['endTime']} | Room: ${s['room']}",
+                    style: TextStyle(fontSize: 14),
+                  );
+                }),
+              ],
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -156,6 +168,7 @@ class ClassCard extends StatelessWidget {
                     Icon(Icons.person, size: 16, color: Colors.grey[600]),
                   ],
                 ),
+
                 // View button
                 Container(
                   padding: const EdgeInsets.symmetric(

@@ -38,14 +38,23 @@ class _SchedulePageState extends State<SchedulePage> {
         orElse: () => {},
       );
 
-      final termData = await getTermById(schedule['termId']);
+      final term = await getTermById(schedule['termId']);
 
-      var matchingTerm = _scheduleData.firstWhere(
-        (sched) => sched['termId'] == termData?.id.toString(),
-        orElse: () => {},
-      );
+      if (term == null) return;
+      final termData = {
+        'id': term.id,
+        'term': term.term,
+        'startYear': term.startYear,
+        'endYear': term.endYear,
+        'synced': term.synced,
+      };
 
-      debugPrint(matchingTerm.toString());
+      // var matchingTerm = _scheduleData.firstWhere(
+      //   (sched) => sched['termId'] == termData?.id.toString(),
+      //   orElse: () => {},
+      // );
+
+      // debugPrint(matchingTerm.toString());
 
       var combined = {
         ...schedule,
