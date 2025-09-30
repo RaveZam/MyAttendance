@@ -11,6 +11,9 @@ class ClassCard extends StatelessWidget {
   final String semester;
   final String classID;
   final Iterable sessions;
+  final String yearLevel;
+  final String section;
+  final String profId;
 
   const ClassCard({
     super.key,
@@ -23,6 +26,9 @@ class ClassCard extends StatelessWidget {
     required this.semester,
     required this.classID,
     required this.sessions,
+    required this.yearLevel,
+    required this.section,
+    required this.profId,
   });
 
   @override
@@ -42,6 +48,9 @@ class ClassCard extends StatelessWidget {
               endTime: endTime,
               status: 'SCHEDULED',
               semester: semester,
+              yearLevel: yearLevel,
+              section: section,
+              profId: profId,
             ),
           ),
         );
@@ -138,17 +147,6 @@ class ClassCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ...sessions.map<Widget>((s) {
-                  return Text(
-                    "${s['startTime']} - ${s['endTime']} | Room: ${s['room']}",
-                    style: TextStyle(fontSize: 14),
-                  );
-                }),
-              ],
-            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

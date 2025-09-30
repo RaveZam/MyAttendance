@@ -84,6 +84,9 @@ class ClassList extends StatelessWidget {
         endTime: endTime,
         status: 'SCHEDULED',
         semester: "$term $startYear - $endYear",
+        yearLevel: firstSession['subjectData']['yearLevel']?.toString() ?? '',
+        section: firstSession['subjectData']['section']?.toString() ?? '',
+        profId: firstSession['subjectData']['profId']?.toString() ?? '',
       );
     }).toList();
   }

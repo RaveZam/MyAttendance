@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
-import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/class_summary.dart';
 import 'package:myattendance/features/Teacher/features/students_list/pages/student_page.dart';
+import 'package:myattendance/features/Teacher/features/class_details/widgets/class_details_info_card.dart';
 
 class ClassDetailsPage extends StatefulWidget {
   final String subject;
@@ -12,6 +12,9 @@ class ClassDetailsPage extends StatefulWidget {
   final String status;
   final String semester;
   final String classID;
+  final String yearLevel;
+  final String section;
+  final String profId;
   final Iterable sessions;
 
   const ClassDetailsPage({
@@ -24,6 +27,9 @@ class ClassDetailsPage extends StatefulWidget {
     required this.status,
     required this.semester,
     required this.classID,
+    required this.yearLevel,
+    required this.section,
+    required this.profId,
     required this.sessions,
   });
 
@@ -35,6 +41,12 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
   final db = AppDatabase.instance;
 
   @override
+  void initState() {
+    super.initState();
+    debugPrint("Class Details Page: ${widget.sessions.toString()}");
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
@@ -43,9 +55,20 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            ClassSummaryCard(classID: widget.classID, subject: widget.subject),
+            // Detailed Class Information Card
+            ClassDetailsInfoCard(
+              subject: widget.subject,
+              courseCode: widget.courseCode,
+              room: widget.room,
+              startTime: widget.startTime,
+              endTime: widget.endTime,
+              semester: widget.semester,
+              yearLevel: widget.yearLevel,
+              section: widget.section,
+              profId: widget.profId,
+              sessions: widget.sessions,
+            ),
             const SizedBox(height: 12),
-            const SizedBox(height: 24),
             const _QuickActionsSection(),
             const SizedBox(height: 24),
             const _FeatureListSection(),
@@ -92,38 +115,6 @@ class _ClassDetailsAppBar extends StatelessWidget
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
-
-class _StatItem extends StatelessWidget {
-  final String number;
-  final String label;
-
-  const _StatItem({required this.number, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Text(
-          number,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: scheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: scheme.onSurface.withOpacity(0.7),
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _QuickActionsSection extends StatelessWidget {
