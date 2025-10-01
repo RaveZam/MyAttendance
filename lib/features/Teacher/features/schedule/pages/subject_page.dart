@@ -5,14 +5,14 @@ import 'package:myattendance/features/Teacher/features/schedule/widgets/generate
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
 
-class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key});
+class SubjectPage extends StatefulWidget {
+  const SubjectPage({super.key});
 
   @override
-  State<SchedulePage> createState() => _SchedulePageState();
+  State<SubjectPage> createState() => _SubjectPageState();
 }
 
-class _SchedulePageState extends State<SchedulePage> {
+class _SubjectPageState extends State<SubjectPage> {
   List<Map<String, dynamic>> _scheduleData = [];
   List<Map<String, dynamic>> _subjectsData = [];
 
@@ -32,6 +32,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Future<void> combineData() async {
+    _finalData.clear();
     for (var schedule in _scheduleData) {
       var matchingSubject = _subjectsData.firstWhere(
         (subject) => subject['id'] == schedule['subjectId'],
@@ -57,13 +58,12 @@ class _SchedulePageState extends State<SchedulePage> {
       combined.remove('subjectId');
       combined.remove('termId');
 
-      setState(() {
-        _finalData.add(combined);
-      });
+      _finalData.add(combined);
     }
+    if (mounted) setState(() {});
   }
 
-  void loadSubjects() async {
+  Future<void> loadSubjects() async {
     final subjects = await db.getAllSubjects();
     setState(() {
       _subjectsData = subjects.map((e) => e.toJson()).toList();
@@ -74,15 +74,11 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
 
-  void loadSchedule() async {
+  Future<void> loadSchedule() async {
     final schedules = await db.getAllSchedules();
-
-    if (schedules.isNotEmpty) {
-      setState(() {
-        _scheduleData = schedules.map((e) => e.toJson()).toList();
-      });
-      // debugPrint("Schedule Data: ${_scheduleData.toString()}");
-    }
+    setState(() {
+      _scheduleData = schedules.map((e) => e.toJson()).toList();
+    });
   }
 
   void _navigateToAddSubject() async {
@@ -92,15 +88,26 @@ class _SchedulePageState extends State<SchedulePage> {
     );
 
     if (result == true) {
-      loadSchedule();
+      await refreshData();
     }
+  }
+
+  Future<void> refreshData() async {
+    setState(() {
+      _scheduleData.clear();
+      _subjectsData.clear();
+      _finalData.clear();
+    });
+    await loadSchedule();
+    await loadSubjects();
+    await combineData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
-        title: 'Schedule',
+        title: 'Subjects',
         icon: Icons.calendar_month_rounded,
       ),
       backgroundColor: Colors.grey[50],
@@ -197,42 +204,6 @@ Widget _buildSchedule(
   return SingleChildScrollView(
     child: Column(
       children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              StatisticsCard(
-                value: '5',
-                label: 'Total Classes',
-                color: Colors.blue,
-              ),
-              StatisticsCard(
-                value: '3',
-                label: 'Active Today',
-                color: Colors.green,
-              ),
-              StatisticsCard(
-                value: '412',
-                label: 'Total Students',
-                color: Colors.orange,
-              ),
-            ],
-          ),
-        ),
-
         // Class List
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),

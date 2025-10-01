@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Teacher/features/class_details/pages/class_details_page.dart';
+import 'package:myattendance/core/database/app_database.dart';
 
 class ClassCard extends StatelessWidget {
   final String subject;
@@ -14,6 +15,7 @@ class ClassCard extends StatelessWidget {
   final String yearLevel;
   final String section;
   final String profId;
+  final int? subjectId;
 
   const ClassCard({
     super.key,
@@ -29,6 +31,7 @@ class ClassCard extends StatelessWidget {
     required this.yearLevel,
     required this.section,
     required this.profId,
+    this.subjectId,
   });
 
   @override
@@ -69,99 +72,207 @@ class ClassCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Top row with icon, title, and next session
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Subject Icon
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    _getSubjectIcon(subject),
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                // Top row with icon, title, and next session
+                Row(
+                  children: [
+                    // Subject Icon
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _getSubjectIcon(subject),
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Course Title and Semester
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            subject,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            semester,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Right Section - Next Session Information (no menu here)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Status Indicator
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[600],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Next Session Time
+                        Text(
+                          'Next: ${_formatTo12Hour(startTime)}', // TODO: Replace with actual next session time calculation
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          textAlign: TextAlign.right,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                // Course Title and Semester
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                // Statistics Row - Full Width
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        subject,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
+                        '124 Students', // TODO: Replace with actual student count from database
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
-                      const SizedBox(height: 6),
                       Text(
-                        semester,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        '32 Sessions', // TODO: Replace with actual session count from database
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                      Text(
+                        '87% Avg', // TODO: Replace with actual attendance rate from database
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                // Right Section - Next Session Information
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Status Indicator
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[600],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Next Session Time
-                    Text(
-                      'Next: ${_formatTo12Hour(startTime)}', // TODO: Replace with actual next session time calculation
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      textAlign: TextAlign.end,
-                    ),
-                  ],
-                ),
               ],
             ),
-            const SizedBox(height: 16),
-            // Statistics Row - Full Width
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '124 Students', // TODO: Replace with actual student count from database
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                  Text(
-                    '32 Sessions', // TODO: Replace with actual session count from database
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                  Text(
-                    '87% Avg', // TODO: Replace with actual attendance rate from database
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                ],
+            // Top-right overflow menu
+            Positioned(
+              top: 0,
+              right: 0,
+              child: InkWell(
+                onTap: () async {
+                  final RenderBox button =
+                      context.findRenderObject() as RenderBox;
+                  final RenderBox overlay =
+                      Overlay.of(context).context.findRenderObject()
+                          as RenderBox;
+
+                  final Offset buttonPosition = button.localToGlobal(
+                    Offset.zero,
+                    ancestor: overlay,
+                  );
+
+                  final RelativeRect position = RelativeRect.fromRect(
+                    Rect.fromLTWH(
+                      buttonPosition.dx +
+                          30, // Position to the right of the icon
+                      buttonPosition.dy -
+                          10, // Position slightly above the icon
+                      button.size.width + 40, // Width of the menu
+                      button.size.height + 60, // Height of the menu
+                    ),
+                    Offset.zero & overlay.size,
+                  );
+
+                  final selection = await showMenu<String>(
+                    context: context,
+                    position: position,
+                    color: Colors.white,
+                    items: const [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18),
+                            SizedBox(width: 8),
+                            Text('Edit Subject'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Delete Subject',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+
+                  if (selection == 'edit') {
+                    // TODO: Implement edit functionality
+
+                    // You can navigate to an edit page or show an edit dialog
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Edit functionality coming soon!'),
+                        ),
+                      );
+                    }
+                  } else if (selection == 'delete' && subjectId != null) {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete Subject?'),
+                        content: const Text(
+                          'This will remove the subject and its schedules.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                child: const Icon(
+                  Icons.more_horiz,
+                  size: 20,
+                  color: Colors.grey,
+                ),
               ),
             ),
           ],
@@ -192,7 +303,6 @@ class ClassCard extends StatelessWidget {
             return timeString;
           }
 
-          // Convert 24-hour to 12-hour format
           String period = hour >= 12 ? 'PM' : 'AM';
           int displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
 

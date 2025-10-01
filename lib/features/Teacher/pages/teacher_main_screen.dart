@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Teacher/pages/teacher_home_page.dart';
 import 'package:myattendance/features/Settings/pages/settings_page.dart';
-import 'package:myattendance/features/Teacher/features/schedule/pages/schedule_page.dart';
+import 'package:myattendance/features/Teacher/features/schedule/pages/subject_page.dart';
 
 class TeacherMainScreen extends StatefulWidget {
   const TeacherMainScreen({super.key});
@@ -18,7 +18,7 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
 
   final List<Widget> _pages = [
     const TeacherHomePage(),
-    const SchedulePage(),
+    const SubjectPage(),
     const SettingsPage(),
   ];
 
@@ -74,8 +74,8 @@ class _TeacherMainScreenState extends State<TeacherMainScreen>
                   index: 0,
                 ),
                 _buildNavItem(
-                  icon: Icons.calendar_month_rounded,
-                  label: "Schedule",
+                  icon: Icons.book_rounded,
+                  label: "Subjects",
                   index: 1,
                 ),
                 _buildNavItem(

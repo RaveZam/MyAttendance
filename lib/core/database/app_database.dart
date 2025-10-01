@@ -50,8 +50,10 @@ class AppDatabase extends _$AppDatabase {
     return _instance!;
   }
 
+  @override
   int get schemaVersion => 1;
 
+  @override
   MigrationStrategy get migrations {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
@@ -96,8 +98,10 @@ class AppDatabase extends _$AppDatabase {
   Future<List<Subject>> getAllSubjects() => select(subjects).get();
   Future<List<Schedule>> getAllSchedules() => select(schedules).get();
 
-  Future<List<Schedule>> getSchedulesBySubjectId(int id) {
-    return (select(schedules)..where((tbl) => tbl.subjectId.equals(id))).get();
+  Future<List<Schedule>> getSchedulesBySubjectId(int subjectId) {
+    return (select(
+      schedules,
+    )..where((tbl) => tbl.subjectId.equals(subjectId))).get();
   }
 
   Future<void> deleteAllSchedules() => delete(schedules).go();
@@ -115,27 +119,6 @@ class AppDatabase extends _$AppDatabase {
     return await (select(
       terms,
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
-  }
-
-  // Get complete class information with subject and term details
-  Future<Map<String, dynamic>?> getCompleteClassInfo(int subjectId) async {
-    try {
-      final subject = await (select(
-        subjects,
-      )..where((tbl) => tbl.id.equals(subjectId))).getSingleOrNull();
-      if (subject == null) return null;
-
-      final schedules = await getSchedulesBySubjectId(subjectId);
-      if (schedules.isEmpty) return null;
-
-      final schedule = schedules.first;
-      final term = await getTermById(schedule.termId);
-
-      return {'subject': subject, 'schedule': schedule, 'term': term};
-    } catch (e) {
-      print("Error fetching complete class info: $e");
-      return null;
-    }
   }
 
   Future<void> ensureTermsExist(AppDatabase db) async {

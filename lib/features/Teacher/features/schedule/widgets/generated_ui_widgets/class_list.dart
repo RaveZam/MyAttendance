@@ -12,18 +12,7 @@ class ClassList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Classes',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[800],
-          ),
-        ),
-        const SizedBox(height: 12),
-        ..._buildClassList(),
-      ],
+      children: [const SizedBox(height: 12), ..._buildClassList()],
     );
   }
 
