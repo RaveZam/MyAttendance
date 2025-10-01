@@ -7,7 +7,14 @@ import 'package:drift/drift.dart' as drift;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddSubjectPage extends StatefulWidget {
-  const AddSubjectPage({super.key});
+  final Map<String, dynamic>? existingSubject;
+  final List<Map<String, dynamic>>? existingSchedules;
+
+  const AddSubjectPage({
+    super.key,
+    this.existingSubject,
+    this.existingSchedules,
+  });
 
   @override
   State<AddSubjectPage> createState() => _AddSubjectPageState();
@@ -39,6 +46,79 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   void initState() {
     super.initState();
     loadTerms();
+    if (widget.existingSubject != null) {
+      _populateFormWithExistingData();
+    }
+  }
+
+  void _populateFormWithExistingData() {
+    if (widget.existingSubject != null) {
+      // Populate schedules
+      _schedules.clear();
+      if (widget.existingSchedules != null &&
+          widget.existingSchedules!.isNotEmpty) {
+        _schedules.addAll(widget.existingSchedules!);
+      } else {
+        _schedules.add({'day': '', 'startTime': '', 'endTime': '', 'room': ''});
+      }
+
+      // Trigger rebuild to show populated schedules
+      setState(() {});
+
+      // Populate form fields with existing data
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_formKey.currentState != null) {
+          Map<String, dynamic> formData = {
+            'subjectName': widget.existingSubject!['subjectName'],
+            'subjectCode': widget.existingSubject!['subjectCode'],
+            'yearLevel': widget.existingSubject!['yearLevel'],
+            'section': widget.existingSubject!['section'],
+          };
+
+          for (int i = 0; i < _schedules.length; i++) {
+            final schedule = _schedules[i];
+            if (schedule['startTime'] != null &&
+                schedule['startTime'].isNotEmpty) {
+              try {
+                final timeParts = schedule['startTime'].split(':');
+                final startTime = DateTime(
+                  2023,
+                  1,
+                  1,
+                  int.parse(timeParts[0]),
+                  int.parse(timeParts[1]),
+                );
+                formData['startTime_$i'] = startTime;
+              } catch (e) {
+                debugPrint('Error parsing start time: $e');
+              }
+            }
+
+            if (schedule['endTime'] != null && schedule['endTime'].isNotEmpty) {
+              try {
+                final timeParts = schedule['endTime'].split(':');
+                final endTime = DateTime(
+                  2023,
+                  1,
+                  1,
+                  int.parse(timeParts[0]),
+                  int.parse(timeParts[1]),
+                );
+                formData['endTime_$i'] = endTime;
+              } catch (e) {
+                debugPrint('Error parsing end time: $e');
+              }
+            }
+
+            if (schedule['room'] != null) {
+              formData['room_$i'] = schedule['room'];
+            }
+          }
+
+          _formKey.currentState!.patchValue(formData);
+        }
+      });
+    }
   }
 
   Future<void> loadTerms() async {
@@ -46,9 +126,18 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
     setState(() {
       _terms = terms;
     });
+
+    if (widget.existingSubject != null && _terms.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_formKey.currentState != null) {
+          _formKey.currentState!.patchValue({'term': _terms.first});
+        }
+      });
+    }
   }
 
   void createSubject() async {
+    final isEditing = widget.existingSubject != null;
     if (_formKey.currentState!.saveAndValidate()) {
       final subject = _formKey.currentState!.value;
       final profId = Supabase.instance.client.auth.currentUser?.id;
@@ -69,50 +158,93 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
       }
 
       try {
-        final subjectCompanion = SubjectsCompanion(
-          subjectCode: drift.Value(subject['subjectCode']),
-          subjectName: drift.Value(subject['subjectName']),
-          yearLevel: drift.Value(subject['yearLevel']),
-          section: drift.Value(subject['section']),
-          profId: drift.Value(profId.toString()),
-          synced: drift.Value(false),
-        );
+        if (isEditing) {
+          final subjectId = widget.existingSubject!['id'];
 
-        final subjectId = await db.insertSubject(subjectCompanion);
+          // Update subject
+          await db.updateSubject(
+            subjectId,
+            subject['subjectCode'],
+            subject['subjectName'],
+            subject['yearLevel'],
+            subject['section'],
+          );
 
-        if (scheduleObjects.isNotEmpty) {
-          List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
-            schedule,
-          ) {
-            return SchedulesCompanion(
-              subjectId: drift.Value(subjectId),
-              termId: drift.Value(subject['term'].id),
-              day: drift.Value(schedule['day']),
-              startTime: drift.Value(schedule['startTime']),
-              endTime: drift.Value(schedule['endTime']),
-              room: drift.Value(schedule['room']),
-              synced: drift.Value(false),
-            );
-          }).toList();
+          await db.deleteSchedulesBySubjectId(subjectId);
 
-          await db.insertSchedules(scheduleCompanions);
+          if (scheduleObjects.isNotEmpty) {
+            List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
+              schedule,
+            ) {
+              return SchedulesCompanion(
+                subjectId: drift.Value(subjectId),
+                termId: drift.Value(subject['term'].id),
+                day: drift.Value(schedule['day']),
+                startTime: drift.Value(schedule['startTime']),
+                endTime: drift.Value(schedule['endTime']),
+                room: drift.Value(schedule['room']),
+                synced: drift.Value(false),
+              );
+            }).toList();
+
+            await db.insertSchedules(scheduleCompanions);
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subject and schedules updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          final subjectCompanion = SubjectsCompanion(
+            subjectCode: drift.Value(subject['subjectCode']),
+            subjectName: drift.Value(subject['subjectName']),
+            yearLevel: drift.Value(subject['yearLevel']),
+            section: drift.Value(subject['section']),
+            profId: drift.Value(profId.toString()),
+            synced: drift.Value(false),
+          );
+
+          final subjectId = await db.insertSubject(subjectCompanion);
+
+          if (scheduleObjects.isNotEmpty) {
+            List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
+              schedule,
+            ) {
+              return SchedulesCompanion(
+                subjectId: drift.Value(subjectId),
+                termId: drift.Value(subject['term'].id),
+                day: drift.Value(schedule['day']),
+                startTime: drift.Value(schedule['startTime']),
+                endTime: drift.Value(schedule['endTime']),
+                room: drift.Value(schedule['room']),
+                synced: drift.Value(false),
+              );
+            }).toList();
+
+            await db.insertSchedules(scheduleCompanions);
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subject and schedules created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
 
         debugPrint('Subject: ${subject.toString()}');
         debugPrint('Schedules: ${scheduleObjects.toString()}');
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Subject and schedules created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
         Navigator.pop(context, true);
       } catch (e) {
-        debugPrint('Error creating subject: $e');
+        debugPrint('Error ${isEditing ? 'updating' : 'creating'} subject: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating subject: $e'),
+            content: Text(
+              'Error ${isEditing ? 'updating' : 'creating'} subject: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -131,9 +263,9 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Add Subject',
-          style: TextStyle(
+        title: Text(
+          widget.existingSubject != null ? 'Edit Subject' : 'Add Subject',
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -147,7 +279,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Subject Name
               FormBuilderTextField(
                 name: 'subjectName',
                 decoration: const InputDecoration(
@@ -159,7 +290,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 20),
 
-              // Subject Code
               FormBuilderTextField(
                 name: 'subjectCode',
                 decoration: const InputDecoration(
@@ -190,7 +320,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 20),
 
-              // Grade Level Dropdown
               FormBuilderDropdown<String>(
                 name: 'yearLevel',
                 decoration: const InputDecoration(
@@ -208,7 +337,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 20),
 
-              // Section
               FormBuilderTextField(
                 name: 'section',
                 decoration: const InputDecoration(
@@ -220,7 +348,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 20),
 
-              // Schedule Section
               const Text(
                 'Schedule',
                 style: TextStyle(
@@ -231,7 +358,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(height: 16),
 
-              // Dynamic Schedule Fields - Optimized
               ..._schedules.asMap().entries.map((entry) {
                 int index = entry.key;
                 Map<String, dynamic> schedule = entry.value;
@@ -260,9 +386,11 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Create Subject',
-                        style: TextStyle(
+                      child: Text(
+                        widget.existingSubject != null
+                            ? 'Save Subject'
+                            : 'Create Subject',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -289,10 +417,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
       ),
       child: Column(
         children: [
-          // First row: Day and Remove button
           Row(
             children: [
-              // Day Dropdown (Monday-Friday only)
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: schedule['day']?.isEmpty == true
@@ -321,7 +447,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
               ),
               const SizedBox(width: 12),
 
-              // Remove button
               if (_schedules.length > 1)
                 IconButton(
                   onPressed: () => _removeSchedule(index),
@@ -334,10 +459,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           ),
           const SizedBox(height: 12),
 
-          // Second row: Start Time and End Time with Time Pickers
           Row(
             children: [
-              // Start Time with Time Picker
               Expanded(
                 child: FormBuilderDateTimePicker(
                   name: 'startTime_${index}',
@@ -361,8 +484,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // End Time with Time Picker
               Expanded(
                 child: FormBuilderDateTimePicker(
                   name: 'endTime_${index}',
@@ -389,7 +510,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           ),
           const SizedBox(height: 12),
 
-          // Third row: Room Number
           FormBuilderTextField(
             name: 'room_${index}',
             decoration: const InputDecoration(
@@ -426,8 +546,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   //   if (_formKey.currentState!.saveAndValidate()) {
   //     // Form is valid - you can access form data with _formKey.currentState!.value
   //     // and add your own database logic here
-
-  //
   //   }
   // }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/features/Teacher/features/class_details/pages/class_details_page.dart';
+import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/core/database/app_database.dart';
 
 class ClassCard extends StatelessWidget {
@@ -16,6 +17,9 @@ class ClassCard extends StatelessWidget {
   final String section;
   final String profId;
   final int? subjectId;
+  final VoidCallback reloadStates;
+  final Map<String, dynamic>? subjectData;
+  final List<Map<String, dynamic>>? scheduleData;
 
   const ClassCard({
     super.key,
@@ -31,7 +35,10 @@ class ClassCard extends StatelessWidget {
     required this.yearLevel,
     required this.section,
     required this.profId,
-    this.subjectId,
+    required this.subjectId,
+    required this.reloadStates,
+    this.subjectData,
+    this.scheduleData,
   });
 
   @override
@@ -175,7 +182,7 @@ class ClassCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Top-right overflow menu
+
             Positioned(
               top: 0,
               right: 0,
@@ -194,12 +201,10 @@ class ClassCard extends StatelessWidget {
 
                   final RelativeRect position = RelativeRect.fromRect(
                     Rect.fromLTWH(
-                      buttonPosition.dx +
-                          30, // Position to the right of the icon
-                      buttonPosition.dy -
-                          10, // Position slightly above the icon
-                      button.size.width + 40, // Width of the menu
-                      button.size.height + 60, // Height of the menu
+                      buttonPosition.dx + 30,
+                      buttonPosition.dy - 10,
+                      button.size.width + 40,
+                      button.size.height + 60,
                     ),
                     Offset.zero & overlay.size,
                   );
@@ -236,17 +241,23 @@ class ClassCard extends StatelessWidget {
                   );
 
                   if (selection == 'edit') {
-                    // TODO: Implement edit functionality
-
-                    // You can navigate to an edit page or show an edit dialog
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Edit functionality coming soon!'),
+                    if (context.mounted && subjectData != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddSubjectPage(
+                            existingSubject: subjectData,
+                            existingSchedules: scheduleData,
+                          ),
                         ),
-                      );
+                      ).then((result) {
+                        if (result == true) {
+                          reloadStates();
+                        }
+                      });
                     }
-                  } else if (selection == 'delete' && subjectId != null) {
+                  } else if (selection == 'delete') {
+                    debugPrint("Deleted subject $subjectId");
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -260,12 +271,37 @@ class ClassCard extends StatelessWidget {
                             child: const Text('Cancel'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
+                            onPressed: () => {Navigator.pop(ctx, true)},
                             child: const Text('Delete'),
                           ),
                         ],
                       ),
                     );
+
+                    if (confirm == true && subjectId != null) {
+                      try {
+                        await AppDatabase.instance.deleteSubject(subjectId!);
+                        reloadStates();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Subject deleted successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          // Success message shown, no navigation needed
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to delete subject: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    }
                   }
                 },
                 child: const Icon(

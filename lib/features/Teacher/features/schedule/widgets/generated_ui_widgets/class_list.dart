@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/core/database/app_database.dart';
 import 'class_card.dart';
 import 'empty_classes_state.dart';
 
 class ClassList extends StatelessWidget {
   final List<Map<String, dynamic>> finalData;
-
-  const ClassList({super.key, required this.finalData});
+  final VoidCallback reloadStates;
+  const ClassList({
+    super.key,
+    required this.finalData,
+    required this.reloadStates,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +42,20 @@ class ClassList extends StatelessWidget {
     return classesBySubject.entries.map((entry) {
       final subject = entry.key;
       final classSessions = entry.value;
-      // debugPrint("Class Sessions ${classSessions.toString()}");
-
-      final sessions = classSessions.map<Map<String, dynamic>>((s) {
-        return {
-          "day": s['day'],
-          "startTime": s['startTime'],
-          "endTime": s['endTime'],
-          "room": s['room'],
-        };
-      });
+      final uniqueSessions = <String, Map<String, dynamic>>{};
+      for (final s in classSessions) {
+        final key =
+            "${s['day']}_${s['startTime']}_${s['endTime']}_${s['room']}";
+        if (!uniqueSessions.containsKey(key)) {
+          uniqueSessions[key] = {
+            "day": s['day'],
+            "startTime": s['startTime'],
+            "endTime": s['endTime'],
+            "room": s['room'],
+          };
+        }
+      }
+      final sessions = uniqueSessions.values.toList();
 
       final firstSession = classSessions.first;
       debugPrint("first session: ${firstSession.toString()}");
@@ -76,6 +83,10 @@ class ClassList extends StatelessWidget {
         yearLevel: firstSession['subjectData']['yearLevel']?.toString() ?? '',
         section: firstSession['subjectData']['section']?.toString() ?? '',
         profId: firstSession['subjectData']['profId']?.toString() ?? '',
+        subjectId: firstSession['subjectData']['id'] ?? 0,
+        reloadStates: reloadStates,
+        subjectData: firstSession['subjectData'],
+        scheduleData: sessions.toList(),
       );
     }).toList();
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
-import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/statistics_card.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/generated_ui_widgets/class_list.dart';
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
@@ -57,10 +56,10 @@ class _SubjectPageState extends State<SubjectPage> {
       };
       combined.remove('subjectId');
       combined.remove('termId');
-
-      _finalData.add(combined);
+      setState(() {
+        _finalData.add(combined);
+      });
     }
-    if (mounted) setState(() {});
   }
 
   Future<void> loadSubjects() async {
@@ -113,7 +112,7 @@ class _SubjectPageState extends State<SubjectPage> {
       backgroundColor: Colors.grey[50],
       body: _scheduleData.isEmpty
           ? _buildEmptyState()
-          : _buildSchedule(_finalData, context),
+          : _buildSchedule(_finalData, context, refreshData),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddSubject,
         child: const Icon(Icons.add),
@@ -200,6 +199,7 @@ class _SubjectPageState extends State<SubjectPage> {
 Widget _buildSchedule(
   List<Map<String, dynamic>> finalData,
   BuildContext context,
+  VoidCallback refreshData,
 ) {
   return SingleChildScrollView(
     child: Column(
@@ -207,7 +207,7 @@ Widget _buildSchedule(
         // Class List
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassList(finalData: finalData),
+          child: ClassList(finalData: finalData, reloadStates: refreshData),
         ),
       ],
     ),

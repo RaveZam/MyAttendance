@@ -11,6 +11,17 @@ class Terms extends Table {
   BoolColumn get synced => boolean()();
 }
 
+class Subjects extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get subjectCode => text()();
+  TextColumn get subjectName => text()();
+  TextColumn get yearLevel => text()();
+  TextColumn get section => text()();
+  TextColumn get profId => text()();
+  BoolColumn get synced => boolean()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 class Schedules extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get subjectId => integer().customConstraint(
@@ -23,17 +34,6 @@ class Schedules extends Table {
   TextColumn get startTime => text()();
   TextColumn get endTime => text()();
   TextColumn get room => text().nullable()();
-  BoolColumn get synced => boolean()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-}
-
-class Subjects extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get subjectCode => text()();
-  TextColumn get subjectName => text()();
-  TextColumn get yearLevel => text()();
-  TextColumn get section => text()();
-  TextColumn get profId => text()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -78,6 +78,33 @@ class AppDatabase extends _$AppDatabase {
       print("Insert error: $e\n$stack");
       rethrow; // keeps the original error trace
     }
+  }
+
+  Future<int> deleteSubject(int id) {
+    return (delete(subjects)..where((tbl) => tbl.id.equals(id))).go();
+  }
+
+  Future<void> updateSubject(
+    int id,
+    String subjectCode,
+    String subjectName,
+    String yearLevel,
+    String section,
+  ) async {
+    await (update(subjects)..where((tbl) => tbl.id.equals(id))).write(
+      SubjectsCompanion(
+        subjectCode: Value(subjectCode),
+        subjectName: Value(subjectName),
+        yearLevel: Value(yearLevel),
+        section: Value(section),
+      ),
+    );
+  }
+
+  Future<void> deleteSchedulesBySubjectId(int subjectId) async {
+    await (delete(
+      schedules,
+    )..where((tbl) => tbl.subjectId.equals(subjectId))).go();
   }
 
   Future<int> insertSchedule(SchedulesCompanion entry) {

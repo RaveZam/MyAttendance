@@ -12,24 +12,27 @@ class EmptyClassesState extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[200]!),
       ),
-      child: Column(
-        children: [
-          Icon(Icons.school_outlined, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No Classes Found',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.school_outlined, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No Classes Found',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Import your schedule to see your classes here',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Add Your Subjects to get started',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+          ],
+        ),
       ),
     );
   }
