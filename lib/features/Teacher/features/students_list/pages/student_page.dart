@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'student_add_page.dart';
+
+import 'package:myattendance/core/database/app_database.dart';
 
 class StudentPage extends StatefulWidget {
-  const StudentPage({super.key});
-
+  final String subjectId;
+  const StudentPage({super.key, required this.subjectId});
   @override
   State<StudentPage> createState() => _StudentPageState();
 }
 
 class _StudentPageState extends State<StudentPage> {
+  List<Map<String, dynamic>> students = [];
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint("Subject ID from student page: ${widget.subjectId}");
+    getAllStudents();
+  }
+
+  void getAllStudents() async {
+    final studentsData = await AppDatabase.instance.getStudentsInSubject(
+      int.parse(widget.subjectId),
+    );
+
+    setState(() {
+      students = studentsData.map((student) => student.toJson()).toList();
+    });
+  }
+
   String selectedFilter = 'All';
   String searchQuery = '';
-
-  final List<StudentData> students = [];
-
-  List<StudentData> get filteredStudents {
-    var filtered = students.where((student) {
-      final matchesSearch =
-          student.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          student.id.toLowerCase().contains(searchQuery.toLowerCase());
-
-      if (selectedFilter == 'All') return matchesSearch;
-      if (selectedFilter == 'Good (90%+)')
-        return matchesSearch && student.attendancePercentage >= 90;
-      if (selectedFilter == 'At Risk (<75%)')
-        return matchesSearch && student.attendancePercentage < 75;
-
-      return matchesSearch;
-    }).toList();
-
-    return filtered;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class _StudentPageState extends State<StudentPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Class Attendance',
+          'Students List',
           style: TextStyle(
             color: scheme.onSurface,
             fontWeight: FontWeight.w600,
@@ -61,10 +61,29 @@ class _StudentPageState extends State<StudentPage> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddStudentPage(subjectId: widget.subjectId),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            if (students.isEmpty) const _ImportStudentsSection(),
+            if (students.isEmpty)
+              EmptyStudentsScreen(
+                onAddStudent: () {},
+                onJoinViaBLE: () {},
+                subjectId: widget.subjectId,
+              ),
             if (students.isNotEmpty) ...[
               // Class Overview Card
               Container(
@@ -224,10 +243,21 @@ class _StudentPageState extends State<StudentPage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredStudents.length,
+                itemCount: students.length,
                 itemBuilder: (context, index) {
-                  final student = filteredStudents[index];
-                  return _StudentCard(student: student);
+                  final student = students[index];
+                  return _StudentCard(
+                    student: StudentData(
+                      name: student['firstName'] + ' ' + student['lastName'],
+                      id: student['studentId'],
+                      present: 0,
+                      absent: 0,
+                      late: 0,
+                      attendancePercentage: 0,
+                      status: 'Good',
+                      statusColor: Colors.green,
+                    ),
+                  );
                 },
               ),
             ],
@@ -238,149 +268,99 @@ class _StudentPageState extends State<StudentPage> {
   }
 }
 
-class _ImportStudentsSection extends StatelessWidget {
-  const _ImportStudentsSection();
-
-  Future<void> _downloadSampleCsv(BuildContext context) async {
-    const sample =
-        'Name, Student ID, Email, Class\n'
-        'John Doe, 2025001, john@email.com, Math 101\n'
-        'Jane Smith, 2025002, jane@email.com, Math 101\n';
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/sample_students.csv');
-    await file.writeAsString(sample);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Saved to: ${file.path}')));
-  }
+class EmptyStudentsScreen extends StatelessWidget {
+  final VoidCallback onAddStudent;
+  final VoidCallback onJoinViaBLE;
+  final String subjectId;
+  const EmptyStudentsScreen({
+    super.key,
+    required this.onAddStudent,
+    required this.onJoinViaBLE,
+    required this.subjectId,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Import Students',
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceVariant,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.upload_file,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'CSV File Upload',
-                            style: TextStyle(
-                              color: scheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            'Import student list from CSV',
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => debugPrint('Choose File'),
 
-                    child: const Text('Choose File'),
-                  ),
-                ),
-              ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 72, color: scheme.primary),
+            const SizedBox(height: 20),
+            Text(
+              'No Students Found',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: scheme.outlineVariant),
+            const SizedBox(height: 12),
+            Text(
+              "You can add students manually or let them join using the class code via BLE.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 24),
+
+            Row(
               children: [
-                Text(
-                  'Required CSV Format:',
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AddStudentPage(subjectId: subjectId),
+                        ),
+                      );
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.person_add, size: 28),
+                        SizedBox(height: 8),
+                        Text("Add"),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Name, Student ID, Email, Class\n'
-                    'John Doe, 2025001, john@email.com, Math 101\n'
-                    'Jane Smith, 2025002, jane@email.com, Math 101',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => _downloadSampleCsv(context),
-                  child: Text(
-                    'Download Sample CSV',
-                    style: TextStyle(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: onJoinViaBLE,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.bluetooth, size: 28),
+                        SizedBox(height: 8),
+                        Text("Join"),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

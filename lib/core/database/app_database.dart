@@ -38,7 +38,31 @@ class Schedules extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Schedules, Subjects, Terms])
+class Students extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get firstName => text()();
+  TextColumn get lastName => text()();
+  TextColumn get studentId => text()();
+  BoolColumn get synced => boolean()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class SubjectStudents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get studentId => integer().customConstraint(
+    'NOT NULL REFERENCES students(id) ON DELETE CASCADE',
+  )();
+
+  IntColumn get subjectId => integer().customConstraint(
+    'NOT NULL REFERENCES subjects(id) ON DELETE CASCADE',
+  )();
+
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [Schedules, Subjects, Terms, Students, SubjectStudents])
 class AppDatabase extends _$AppDatabase {
   AppDatabase._([QueryExecutor? executor])
     : super(executor ?? _openConnection());
@@ -71,12 +95,43 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<int> insertStudent(StudentsCompanion entry) {
+    try {
+      return into(students).insert(entry);
+    } catch (e, stack) {
+      print("Insert error: $e\n$stack");
+      rethrow;
+    }
+  }
+
+  Future<int> enrollStudent(int subjectId, int studentId) {
+    return into(subjectStudents).insert(
+      SubjectStudentsCompanion.insert(
+        subjectId: subjectId,
+        studentId: studentId,
+      ),
+      mode: InsertMode.insertOrIgnore, // avoids duplicates
+    );
+  }
+
+  Future<List<Student>> getStudentsInSubject(int subjectId) {
+    final query = select(students).join([
+      innerJoin(
+        subjectStudents,
+        subjectStudents.studentId.equalsExp(students.id),
+      ),
+    ])..where(subjectStudents.subjectId.equals(subjectId));
+    return query.map((row) => row.readTable(students)).get();
+  }
+
+  Future<List<Student>> getAllStudents() => select(students).get();
+
   Future<int> insertSubject(SubjectsCompanion entry) {
     try {
       return into(subjects).insert(entry);
     } catch (e, stack) {
       print("Insert error: $e\n$stack");
-      rethrow; // keeps the original error trace
+      rethrow;
     }
   }
 

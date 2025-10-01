@@ -62,10 +62,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
         _schedules.add({'day': '', 'startTime': '', 'endTime': '', 'room': ''});
       }
 
-      // Trigger rebuild to show populated schedules
       setState(() {});
 
-      // Populate form fields with existing data
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_formKey.currentState != null) {
           Map<String, dynamic> formData = {

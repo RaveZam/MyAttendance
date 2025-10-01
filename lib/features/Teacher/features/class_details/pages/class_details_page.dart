@@ -71,7 +71,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
             const SizedBox(height: 12),
             const _QuickActionsSection(),
             const SizedBox(height: 24),
-            const _FeatureListSection(),
+            _FeatureListSection(subjectId: widget.classID),
           ],
         ),
       ),
@@ -211,7 +211,8 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _FeatureListSection extends StatelessWidget {
-  const _FeatureListSection();
+  final String subjectId;
+  const _FeatureListSection({required this.subjectId});
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +240,9 @@ class _FeatureListSection extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const StudentPage()),
+                MaterialPageRoute(
+                  builder: (context) => StudentPage(subjectId: subjectId),
+                ),
               );
             },
           ),
