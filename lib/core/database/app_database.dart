@@ -77,7 +77,6 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  @override
   MigrationStrategy get migrations {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
@@ -125,6 +124,25 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<Student>> getAllStudents() => select(students).get();
+
+  Future<void> updateStudent(
+    int id,
+    String firstName,
+    String lastName,
+    String studentId,
+  ) async {
+    await (update(students)..where((tbl) => tbl.id.equals(id))).write(
+      StudentsCompanion(
+        firstName: Value(firstName),
+        lastName: Value(lastName),
+        studentId: Value(studentId),
+      ),
+    );
+  }
+
+  Future<void> deleteStudent(int id) async {
+    await (delete(students)..where((tbl) => tbl.id.equals(id))).go();
+  }
 
   Future<int> insertSubject(SubjectsCompanion entry) {
     try {

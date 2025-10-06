@@ -12,6 +12,7 @@ class StudentPage extends StatefulWidget {
 
 class _StudentPageState extends State<StudentPage> {
   List<Map<String, dynamic>> students = [];
+  List<Map<String, dynamic>> filteredStudents = [];
   Subject? subjectDetails;
 
   @override
@@ -19,6 +20,11 @@ class _StudentPageState extends State<StudentPage> {
     super.initState();
     getSubjectDetails();
     getAllStudents();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
   }
 
   void getSubjectDetails() async {
@@ -55,6 +61,34 @@ class _StudentPageState extends State<StudentPage> {
 
     setState(() {
       students = studentsData.map((student) => student.toJson()).toList();
+      filteredStudents = students; // Initialize filtered students
+    });
+  }
+
+  Future<void> refreshData() async {
+    getAllStudents();
+    // Reset search to show all students
+    setState(() {
+      searchQuery = '';
+    });
+    filterStudents('');
+  }
+
+  void filterStudents(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        filteredStudents = students;
+      } else {
+        filteredStudents = students.where((student) {
+          final fullName = '${student['firstName']} ${student['lastName']}'
+              .toLowerCase();
+          final studentId = student['studentId'].toString().toLowerCase();
+          final searchLower = query.toLowerCase();
+
+          return fullName.contains(searchLower) ||
+              studentId.contains(searchLower);
+        }).toList();
+      }
     });
   }
 
@@ -82,37 +116,42 @@ class _StudentPageState extends State<StudentPage> {
             fontSize: 18,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.more_vert, color: scheme.onSurface),
-            onPressed: () {},
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => AddStudentPage(subjectId: widget.subjectId),
             ),
           );
+
+          // Refresh data if a student was added
+          if (result == true) {
+            await refreshData();
+
+            // Show success message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Student list refreshed'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          }
         },
         child: const Icon(Icons.add),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            if (students.isEmpty)
-              EmptyStudentsScreen(
-                onAddStudent: () {},
-                onJoinViaBLE: () {},
-                subjectId: widget.subjectId,
-              ),
-            if (students.isNotEmpty) ...[
+      body: RefreshIndicator(
+        onRefresh: refreshData,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
               // Class Overview Card
               Container(
                 margin: const EdgeInsets.all(16),
@@ -220,6 +259,7 @@ class _StudentPageState extends State<StudentPage> {
                           setState(() {
                             searchQuery = value;
                           });
+                          filterStudents(value);
                         },
                         decoration: InputDecoration(
                           hintText: 'Search students...',
@@ -227,6 +267,20 @@ class _StudentPageState extends State<StudentPage> {
                             Icons.search,
                             color: scheme.onSurfaceVariant,
                           ),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      searchQuery = '';
+                                    });
+                                    filterStudents('');
+                                  },
+                                )
+                              : null,
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -266,127 +320,120 @@ class _StudentPageState extends State<StudentPage> {
                 ),
               ),
 
-              // Student List
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: students.length,
-                itemBuilder: (context, index) {
-                  final student = students[index];
-                  return _StudentCard(
-                    student: StudentData(
-                      name: student['firstName'] + ' ' + student['lastName'],
-                      id: student['studentId'],
-                      present: 0,
-                      absent: 0,
-                      late: 0,
-                      attendancePercentage: 0,
-                      status: 'Good',
-                      statusColor: Colors.green,
+              // Search Results Info
+              if (searchQuery.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    '${filteredStudents.length} student${filteredStudents.length == 1 ? '' : 's'} found',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: scheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
                     ),
-                  );
-                },
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+                  ),
+                ),
 
-class EmptyStudentsScreen extends StatelessWidget {
-  final VoidCallback onAddStudent;
-  final VoidCallback onJoinViaBLE;
-  final String subjectId;
-  const EmptyStudentsScreen({
-    super.key,
-    required this.onAddStudent,
-    required this.onJoinViaBLE,
-    required this.subjectId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 72, color: scheme.primary),
-            const SizedBox(height: 20),
-            Text(
-              'No Students Found',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "You can add students manually or let them join using the class code via BLE.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 24),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+              // No Students Message
+              if (filteredStudents.isEmpty)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: scheme.shadow.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AddStudentPage(subjectId: subjectId),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        searchQuery.isNotEmpty
+                            ? Icons.search_off
+                            : Icons.people_outline,
+                        size: 48,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        searchQuery.isNotEmpty
+                            ? 'No students found'
+                            : 'No students enrolled',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
                         ),
-                      );
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.person_add, size: 28),
-                        SizedBox(height: 8),
-                        Text("Add"),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ),
-                    onPressed: onJoinViaBLE,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.bluetooth, size: 28),
-                        SizedBox(height: 8),
-                        Text("Join"),
-                      ],
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        searchQuery.isNotEmpty
+                            ? 'Try searching with a different term'
+                            : 'Add students to get started with attendance tracking',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ],
+
+              // Student List
+              ...filteredStudents.map((student) {
+                return _StudentCard(
+                  student: StudentData(
+                    name: student['firstName'] + ' ' + student['lastName'],
+                    id: student['studentId'],
+                    present: 0,
+                    absent: 0,
+                    late: 0,
+                    attendancePercentage: 0,
+                    status: 'Good',
+                    statusColor: Colors.green,
+                    databaseId: student['id'],
+                  ),
+                  onStudentUpdate: (updatedStudent) {
+                    setState(() {
+                      // Find the original index in the main students list
+                      final originalIndex = students.indexWhere(
+                        (s) => s['id'] == student['id'],
+                      );
+                      if (originalIndex != -1) {
+                        students[originalIndex] = {
+                          'id': updatedStudent.databaseId!,
+                          'firstName': updatedStudent.name.split(' ').first,
+                          'lastName': updatedStudent.name
+                              .split(' ')
+                              .skip(1)
+                              .join(' '),
+                          'studentId': updatedStudent.id,
+                        };
+                        // Refresh the filtered list
+                        filterStudents(searchQuery);
+                      }
+                    });
+                  },
+                  onStudentDelete: (studentId) {
+                    setState(() {
+                      // Find and remove from main students list
+                      students.removeWhere((s) => s['id'] == studentId);
+                      // Refresh the filtered list
+                      filterStudents(searchQuery);
+                    });
+                  },
+                );
+              }).toList(),
+              const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
@@ -467,8 +514,75 @@ class _FilterButton extends StatelessWidget {
 
 class _StudentCard extends StatelessWidget {
   final StudentData student;
+  final Function(StudentData) onStudentUpdate;
+  final Function(int) onStudentDelete;
 
-  const _StudentCard({required this.student});
+  const _StudentCard({
+    required this.student,
+    required this.onStudentUpdate,
+    required this.onStudentDelete,
+  });
+
+  void _handleMenuAction(BuildContext context, String action) {
+    if (action == 'edit') {
+      _editStudent(context);
+    } else if (action == 'delete') {
+      _deleteStudent(context);
+    }
+  }
+
+  void _editStudent(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) =>
+          StudentEditPopup(student: student, onUpdate: onStudentUpdate),
+    );
+  }
+
+  void _deleteStudent(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Student?'),
+        content: const Text('This will remove the student from this subject.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && student.databaseId != null) {
+      try {
+        await AppDatabase.instance.deleteStudent(student.databaseId!);
+        onStudentDelete(student.databaseId!);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Student deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting student: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +606,6 @@ class _StudentCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Avatar
               Container(
                 width: 50,
                 height: 50,
@@ -508,41 +621,94 @@ class _StudentCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Student Info
+              // Name and Menu Row (flexes to top)
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        student.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_horiz,
+                        color: scheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                      onSelected: (value) => _handleMenuAction(context, value),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit Student'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete Student',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Details Container
+          Row(
+            children: [
+              const SizedBox(width: 12), // Align with avatar
+              // Left side: Student ID and Attendance details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      student.name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
                       'ID: ${student.id}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: scheme.onSurface.withOpacity(0.7),
+                        color: scheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       '${student.present} Present, ${student.absent} Absent, ${student.late} Late',
                       style: TextStyle(
                         fontSize: 12,
-                        color: scheme.onSurface.withOpacity(0.6),
+                        color: scheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Status
+              // Right side: Status
               Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
                     width: 8,
@@ -590,39 +756,6 @@ class _StudentCard extends StatelessWidget {
             minHeight: 6,
             borderRadius: BorderRadius.circular(3),
           ),
-
-          // Action Required for At Risk students
-          if (student.attendancePercentage < 75) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  'Action Required',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.red[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    backgroundColor: scheme.surfaceVariant,
-                    foregroundColor: scheme.onSurface,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Contact', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -638,6 +771,7 @@ class StudentData {
   final int attendancePercentage;
   final String status;
   final Color statusColor;
+  final int? databaseId; // Add database ID for updates
 
   StudentData({
     required this.name,
@@ -648,5 +782,210 @@ class StudentData {
     required this.attendancePercentage,
     required this.status,
     required this.statusColor,
+    this.databaseId,
   });
+}
+
+class StudentEditPopup extends StatefulWidget {
+  final StudentData student;
+  final Function(StudentData) onUpdate;
+
+  const StudentEditPopup({
+    super.key,
+    required this.student,
+    required this.onUpdate,
+  });
+
+  @override
+  State<StudentEditPopup> createState() => _StudentEditPopupState();
+}
+
+class _StudentEditPopupState extends State<StudentEditPopup> {
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _studentIdController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Split the name into first and last name
+    final nameParts = widget.student.name.split(' ');
+    _firstNameController = TextEditingController(
+      text: nameParts.isNotEmpty ? nameParts[0] : '',
+    );
+    _lastNameController = TextEditingController(
+      text: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
+    );
+    _studentIdController = TextEditingController(text: widget.student.id);
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _studentIdController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Edit Student',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _firstNameController,
+                    decoration: InputDecoration(
+                      labelText: 'First Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter first name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _lastNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Last Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter last name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _studentIdController,
+                    decoration: InputDecoration(
+                      labelText: 'Student ID',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter student ID';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _saveStudent,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _saveStudent() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        if (widget.student.databaseId != null) {
+          await AppDatabase.instance.updateStudent(
+            widget.student.databaseId!,
+            _firstNameController.text.trim(),
+            _lastNameController.text.trim(),
+            _studentIdController.text.trim(),
+          );
+        }
+
+        // Update the student data
+        final updatedStudent = StudentData(
+          name:
+              '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+          id: _studentIdController.text.trim(),
+          present: widget.student.present,
+          absent: widget.student.absent,
+          late: widget.student.late,
+          attendancePercentage: widget.student.attendancePercentage,
+          status: widget.student.status,
+          statusColor: widget.student.statusColor,
+          databaseId: widget.student.databaseId,
+        );
+
+        widget.onUpdate(updatedStudent);
+
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Student updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating student: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
 import 'package:myattendance/features/Teacher/features/students_list/pages/student_page.dart';
 import 'package:myattendance/features/Teacher/features/class_details/widgets/class_details_info_card.dart';
+import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 
 class ClassDetailsPage extends StatefulWidget {
   final String subject;
@@ -51,7 +52,26 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: const _ClassDetailsAppBar(),
+      appBar: _ClassDetailsAppBar(
+        subjectId: widget.classID,
+        subjectData: {
+          'id': int.parse(widget.classID),
+          'subjectName': widget.subject,
+          'subjectCode': widget.courseCode,
+          'yearLevel': widget.yearLevel,
+          'section': widget.section,
+        },
+        scheduleData: widget.sessions
+            .map(
+              (session) => {
+                'day': session['day'] ?? '',
+                'startTime': session['startTime'] ?? '',
+                'endTime': session['endTime'] ?? '',
+                'room': session['room'] ?? '',
+              },
+            )
+            .toList(),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -80,7 +100,15 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
 
 class _ClassDetailsAppBar extends StatelessWidget
     implements PreferredSizeWidget {
-  const _ClassDetailsAppBar();
+  final String subjectId;
+  final Map<String, dynamic> subjectData;
+  final List<Map<String, dynamic>> scheduleData;
+
+  const _ClassDetailsAppBar({
+    required this.subjectId,
+    required this.subjectData,
+    required this.scheduleData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -104,12 +132,106 @@ class _ClassDetailsAppBar extends StatelessWidget
       actions: [
         IconButton(
           icon: Icon(Icons.more_vert, color: scheme.onSurface),
-          onPressed: () {
-            // TODO: menu options
-          },
+          onPressed: () => _showMenu(context),
         ),
       ],
     );
+  }
+
+  void _showMenu(BuildContext context) {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(100, 100, 0, 0),
+      items: [
+        const PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(Icons.edit, size: 18),
+              SizedBox(width: 8),
+              Text('Edit Subject'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete, size: 18, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Delete Subject', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    ).then((selection) {
+      if (selection == 'edit') {
+        _editSubject(context);
+      } else if (selection == 'delete') {
+        _deleteSubject(context);
+      }
+    });
+  }
+
+  void _editSubject(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSubjectPage(
+          existingSubject: subjectData,
+          existingSchedules: scheduleData,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        // Navigate back to refresh the page
+        Navigator.pop(context, true);
+      }
+    });
+  }
+
+  void _deleteSubject(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Subject?'),
+        content: const Text('This will remove the subject and its schedules.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await AppDatabase.instance.deleteSubject(int.parse(subjectId));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subject deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete subject: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override

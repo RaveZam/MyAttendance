@@ -18,22 +18,41 @@ class _AddStudentPageState extends State<AddStudentPage> {
   void addStudent() async {
     debugPrint(_formKey.currentState!.value.toString());
 
-    final student = StudentsCompanion(
-      firstName: drift.Value(_formKey.currentState!.value['firstName']),
-      lastName: drift.Value(_formKey.currentState!.value['lastName']),
-      studentId: drift.Value(_formKey.currentState!.value['studentID']),
-      synced: drift.Value(false),
-    );
+    try {
+      final student = StudentsCompanion(
+        firstName: drift.Value(_formKey.currentState!.value['firstName']),
+        lastName: drift.Value(_formKey.currentState!.value['lastName']),
+        studentId: drift.Value(_formKey.currentState!.value['studentID']),
+        synced: drift.Value(false),
+      );
 
-    final studentID = await AppDatabase.instance.insertStudent(student);
-    AppDatabase.instance.enrollStudent(int.parse(widget.subjectId), studentID);
+      final studentID = await AppDatabase.instance.insertStudent(student);
+      await AppDatabase.instance.enrollStudent(
+        int.parse(widget.subjectId),
+        studentID,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Student Saved Successfully!"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Student Saved Successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navigate back with success result
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error saving student: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
