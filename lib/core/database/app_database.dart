@@ -178,6 +178,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<Subject>> getAllSubjects() => select(subjects).get();
+
+  Future<List<Subject>> getSubjectByID(int id) {
+    return (select(subjects)..where((tbl) => tbl.id.equals(id))).get();
+  }
+
   Future<List<Schedule>> getAllSchedules() => select(schedules).get();
 
   Future<List<Schedule>> getSchedulesBySubjectId(int subjectId) {
@@ -253,5 +258,26 @@ class AppDatabase extends _$AppDatabase {
     } else {
       print("Terms for $startYear-$endYear already exist ✅");
     }
+  }
+
+  Future<void> updateSchedule(
+    int scheduleId,
+    String day,
+    String startTime,
+    String endTime,
+    String room,
+  ) async {
+    await (update(schedules)..where((tbl) => tbl.id.equals(scheduleId))).write(
+      SchedulesCompanion(
+        day: Value(day),
+        startTime: Value(startTime),
+        endTime: Value(endTime),
+        room: Value(room),
+      ),
+    );
+  }
+
+  Future<void> deleteSchedule(int scheduleId) async {
+    await (delete(schedules)..where((tbl) => tbl.id.equals(scheduleId))).go();
   }
 }

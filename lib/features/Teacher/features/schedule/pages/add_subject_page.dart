@@ -168,24 +168,48 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             subject['section'],
           );
 
-          await db.deleteSchedulesBySubjectId(subjectId);
+          // Get existing schedules to compare
+          final existingSchedules = await db.getSchedulesBySubjectId(subjectId);
 
-          if (scheduleObjects.isNotEmpty) {
-            List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
-              schedule,
+          // Update or add schedules instead of deleting all
+          for (int i = 0; i < scheduleObjects.length; i++) {
+            final schedule = scheduleObjects[i];
+            if (schedule['day'].isNotEmpty) {
+              if (i < existingSchedules.length) {
+                // Update existing schedule
+                await db.updateSchedule(
+                  existingSchedules[i].id,
+                  schedule['day'],
+                  schedule['startTime'],
+                  schedule['endTime'],
+                  schedule['room'],
+                );
+              } else {
+                // Add new schedule
+                await db.insertSchedule(
+                  SchedulesCompanion(
+                    subjectId: drift.Value(subjectId),
+                    termId: drift.Value(subject['term'].id),
+                    day: drift.Value(schedule['day']),
+                    startTime: drift.Value(schedule['startTime']),
+                    endTime: drift.Value(schedule['endTime']),
+                    room: drift.Value(schedule['room']),
+                    synced: drift.Value(false),
+                  ),
+                );
+              }
+            }
+          }
+
+          // Remove extra schedules if any
+          if (scheduleObjects.length < existingSchedules.length) {
+            for (
+              int i = scheduleObjects.length;
+              i < existingSchedules.length;
+              i++
             ) {
-              return SchedulesCompanion(
-                subjectId: drift.Value(subjectId),
-                termId: drift.Value(subject['term'].id),
-                day: drift.Value(schedule['day']),
-                startTime: drift.Value(schedule['startTime']),
-                endTime: drift.Value(schedule['endTime']),
-                room: drift.Value(schedule['room']),
-                synced: drift.Value(false),
-              );
-            }).toList();
-
-            await db.insertSchedules(scheduleCompanions);
+              await db.deleteSchedule(existingSchedules[i].id);
+            }
           }
 
           ScaffoldMessenger.of(context).showSnackBar(

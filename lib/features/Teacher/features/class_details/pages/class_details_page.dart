@@ -43,7 +43,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
   @override
   void initState() {
     super.initState();
-    debugPrint("Class Details Page: ${widget.sessions.toString()}");
+    debugPrint("Class Details Page: ${widget.classID.toString()}");
   }
 
   @override
@@ -55,7 +55,6 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Detailed Class Information Card
             ClassDetailsInfoCard(
               subject: widget.subject,
               courseCode: widget.courseCode,
@@ -71,7 +70,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
             const SizedBox(height: 12),
             const _QuickActionsSection(),
             const SizedBox(height: 24),
-            _FeatureListSection(subjectId: widget.classID),
+            _FeatureListSection(classID: widget.classID),
           ],
         ),
       ),
@@ -211,8 +210,8 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _FeatureListSection extends StatelessWidget {
-  final String subjectId;
-  const _FeatureListSection({required this.subjectId});
+  final String classID;
+  const _FeatureListSection({required this.classID});
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +240,7 @@ class _FeatureListSection extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => StudentPage(subjectId: subjectId),
+                  builder: (context) => StudentPage(subjectId: classID),
                 ),
               );
             },

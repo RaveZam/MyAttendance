@@ -50,7 +50,7 @@ class ClassCard extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => ClassDetailsPage(
               subject: subject,
-              classID: classID,
+              classID: subjectId.toString(), // Use subjectId instead of classID
               courseCode: courseCode,
               sessions: sessions,
               room: room,
