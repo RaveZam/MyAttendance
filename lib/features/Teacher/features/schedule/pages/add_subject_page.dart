@@ -120,6 +120,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   }
 
   Future<void> loadTerms() async {
+    // Ensure default terms exist in the database (creates terms if missing)
+    await db.ensureTermsExist(db);
     final terms = await db.getTerms();
     setState(() {
       _terms = terms;
@@ -164,6 +166,7 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             subjectId,
             subject['subjectCode'],
             subject['subjectName'],
+            subject['term'].id,
             subject['yearLevel'],
             subject['section'],
           );
@@ -189,7 +192,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                 await db.insertSchedule(
                   SchedulesCompanion(
                     subjectId: drift.Value(subjectId),
-                    termId: drift.Value(subject['term'].id),
                     day: drift.Value(schedule['day']),
                     startTime: drift.Value(schedule['startTime']),
                     endTime: drift.Value(schedule['endTime']),
@@ -222,6 +224,7 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           final subjectCompanion = SubjectsCompanion(
             subjectCode: drift.Value(subject['subjectCode']),
             subjectName: drift.Value(subject['subjectName']),
+            termId: drift.Value(subject['term'].id),
             yearLevel: drift.Value(subject['yearLevel']),
             section: drift.Value(subject['section']),
             profId: drift.Value(profId.toString()),
@@ -230,13 +233,16 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
 
           final subjectId = await db.insertSubject(subjectCompanion);
 
+          // Ensure term_id is set on the subject row (use raw update to be resilient
+          // against out-of-date generated companions)
+          await db.setSubjectTerm(subjectId, subject['term'].id);
+
           if (scheduleObjects.isNotEmpty) {
             List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
               schedule,
             ) {
               return SchedulesCompanion(
                 subjectId: drift.Value(subjectId),
-                termId: drift.Value(subject['term'].id),
                 day: drift.Value(schedule['day']),
                 startTime: drift.Value(schedule['startTime']),
                 endTime: drift.Value(schedule['endTime']),

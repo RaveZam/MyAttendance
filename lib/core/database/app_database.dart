@@ -18,6 +18,9 @@ class Subjects extends Table {
   TextColumn get yearLevel => text()();
   TextColumn get section => text()();
   TextColumn get profId => text()();
+  IntColumn get termId => integer().customConstraint(
+    'NOT NULL REFERENCES terms(id) ON DELETE CASCADE',
+  )();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -26,9 +29,6 @@ class Schedules extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get subjectId => integer().customConstraint(
     'NOT NULL REFERENCES subjects(id) ON DELETE CASCADE',
-  )();
-  IntColumn get termId => integer().customConstraint(
-    'NOT NULL REFERENCES terms(id) ON DELETE CASCADE',
   )();
   TextColumn get day => text()();
   TextColumn get startTime => text()();
@@ -75,12 +75,67 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   MigrationStrategy get migrations {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        // Migration to move term_id from schedules to subjects and remove it from schedules
+        if (from < 2) {
+          // 1) Add nullable term_id column to subjects (if not already present at runtime)
+          try {
+            await customStatement(
+              'ALTER TABLE subjects ADD COLUMN term_id INTEGER;',
+            );
+          } catch (e) {
+            // ignore if column already exists
+            print('Could not add term_id column to subjects: $e');
+          }
+
+          // 2) Copy term_id values from schedules into subjects (take first matching schedule per subject)
+          try {
+            await customStatement('''
+              UPDATE subjects
+              SET term_id = (
+                SELECT term_id FROM schedules WHERE schedules.subject_id = subjects.id LIMIT 1
+              )
+              WHERE term_id IS NULL;
+            ''');
+          } catch (e) {
+            print('Error copying term_id from schedules to subjects: $e');
+          }
+
+          // 3) Recreate schedules table without term_id column (SQLite doesn't support DROP COLUMN)
+          try {
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS schedules_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+                day TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                room TEXT,
+                synced INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+              );
+            ''');
+
+            await customStatement('''
+              INSERT INTO schedules_new (id, subject_id, day, start_time, end_time, room, synced, created_at)
+              SELECT id, subject_id, day, start_time, end_time, room, synced, created_at FROM schedules;
+            ''');
+
+            await customStatement('DROP TABLE IF EXISTS schedules;');
+            await customStatement(
+              'ALTER TABLE schedules_new RENAME TO schedules;',
+            );
+          } catch (e) {
+            print('Error recreating schedules table without term_id: $e');
+          }
+        }
       },
     );
   }
@@ -144,13 +199,22 @@ class AppDatabase extends _$AppDatabase {
     await (delete(students)..where((tbl) => tbl.id.equals(id))).go();
   }
 
-  Future<int> insertSubject(SubjectsCompanion entry) {
+  Future<int> insertSubject(Insertable<Subject> entry) {
     try {
       return into(subjects).insert(entry);
     } catch (e, stack) {
       print("Insert error: $e\n$stack");
       rethrow;
     }
+  }
+
+  /// Set the term_id column for an existing subject using a raw SQL statement.
+  Future<void> setSubjectTerm(int subjectId, int termId) async {
+    // Use a raw update to set the term_id to avoid depending on generated companions
+    await customStatement('UPDATE subjects SET term_id = ? WHERE id = ?', [
+      termId,
+      subjectId,
+    ]);
   }
 
   Future<int> deleteSubject(int id) {
@@ -161,6 +225,7 @@ class AppDatabase extends _$AppDatabase {
     int id,
     String subjectCode,
     String subjectName,
+    int termId,
     String yearLevel,
     String section,
   ) async {
@@ -172,6 +237,8 @@ class AppDatabase extends _$AppDatabase {
         section: Value(section),
       ),
     );
+
+    await setSubjectTerm(id, termId);
   }
 
   Future<void> deleteSchedulesBySubjectId(int subjectId) async {

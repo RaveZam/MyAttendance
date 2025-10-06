@@ -38,7 +38,9 @@ class _SubjectPageState extends State<SubjectPage> {
         orElse: () => {},
       );
 
-      final term = await getTermById(schedule['termId']);
+      final int subjectTermId =
+          matchingSubject['termId'] ?? matchingSubject['term_id'] ?? 0;
+      final term = subjectTermId != 0 ? await getTermById(subjectTermId) : null;
 
       if (term == null) return;
       final termData = {
@@ -55,7 +57,7 @@ class _SubjectPageState extends State<SubjectPage> {
         "termData": termData,
       };
       combined.remove('subjectId');
-      combined.remove('termId');
+      // termId removed from schedule since term is now on subject
       setState(() {
         _finalData.add(combined);
       });

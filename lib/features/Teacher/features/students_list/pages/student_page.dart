@@ -191,7 +191,7 @@ class _StudentPageState extends State<StudentPage> {
                       children: [
                         Expanded(
                           child: _StatColumn(
-                            value: '124',
+                            value: students.length.toString(),
                             label: 'Total Students',
                           ),
                         ),

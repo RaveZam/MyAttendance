@@ -24,7 +24,6 @@ class ClassList extends StatelessWidget {
     debugPrint("Schedule Data: ${finalData.toString()}");
 
     for (final data in finalData) {
-      debugPrint("Data ${data['termId']}");
       final subject = data['subjectData']['subjectName'] ?? '';
       final classID = data['id']?.toString() ?? '';
       if (subject.isNotEmpty) {

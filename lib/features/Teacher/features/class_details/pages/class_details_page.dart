@@ -3,6 +3,7 @@ import 'package:myattendance/core/database/app_database.dart';
 import 'package:myattendance/features/Teacher/features/students_list/pages/student_page.dart';
 import 'package:myattendance/features/Teacher/features/class_details/widgets/class_details_info_card.dart';
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
+import 'package:myattendance/features/Teacher/features/attendance/pages/attendance_page.dart';
 
 class ClassDetailsPage extends StatefulWidget {
   final String subject;
@@ -41,10 +42,23 @@ class ClassDetailsPage extends StatefulWidget {
 class _ClassDetailsPageState extends State<ClassDetailsPage> {
   final db = AppDatabase.instance;
 
+  List<Map<String, dynamic>> students = [];
+
   @override
   void initState() {
     super.initState();
     debugPrint("Class Details Page: ${widget.classID.toString()}");
+    getAllStudents();
+  }
+
+  void getAllStudents() async {
+    final studentsData = await AppDatabase.instance.getStudentsInSubject(
+      int.parse(widget.classID),
+    );
+
+    setState(() {
+      students = studentsData.map((student) => student.toJson()).toList();
+    });
   }
 
   @override
@@ -88,9 +102,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
               sessions: widget.sessions,
             ),
             const SizedBox(height: 12),
-            const _QuickActionsSection(),
+            _QuickActionsSection(classID: widget.classID),
             const SizedBox(height: 24),
-            _FeatureListSection(classID: widget.classID),
+            _FeatureListSection(classID: widget.classID, students: students),
           ],
         ),
       ),
@@ -239,10 +253,44 @@ class _ClassDetailsAppBar extends StatelessWidget
 }
 
 class _QuickActionsSection extends StatelessWidget {
-  const _QuickActionsSection();
+  final String classID;
+  const _QuickActionsSection({required this.classID});
 
   @override
   Widget build(BuildContext context) {
+    Future<void> confirmStartSession(BuildContext context) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Start Session?'),
+          content: const Text('Are you sure you want to Start Session?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Start'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        debugPrint('Start Session confirmed for class: $classID');
+        if (context.mounted) {
+          // Navigate to AttendancePage and pass the classID as subjectId
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AttendancePage(subjectId: classID),
+            ),
+          );
+        }
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -260,7 +308,7 @@ class _QuickActionsSection extends StatelessWidget {
                   icon: Icons.grid_view,
                   label: 'Start Session',
                   isPrimary: true,
-                  onTap: () {},
+                  onTap: () => confirmStartSession(context),
                 ),
               ),
               const SizedBox(width: 12),
@@ -333,7 +381,8 @@ class _QuickActionButton extends StatelessWidget {
 
 class _FeatureListSection extends StatelessWidget {
   final String classID;
-  const _FeatureListSection({required this.classID});
+  final List<Map<String, dynamic>> students;
+  const _FeatureListSection({required this.classID, required this.students});
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +406,7 @@ class _FeatureListSection extends StatelessWidget {
             icon: Icons.people,
             title: 'Students List',
             description: 'Manage enrolled students',
-            trailing: '124',
+            trailing: students.length.toString(),
             onTap: () {
               Navigator.push(
                 context,
