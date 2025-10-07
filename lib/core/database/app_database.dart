@@ -123,6 +123,12 @@ class AppDatabase extends _$AppDatabase {
     return (select(sessions)..where((tbl) => tbl.id.equals(sessionId))).get();
   }
 
+  Future<List<AttendanceData>> getAttendanceBySessionID(int sessionID) {
+    return (select(
+      attendance,
+    )..where((tbl) => tbl.sessionId.equals(sessionID))).get();
+  }
+
   Future<int> insertAttendance(AttendanceCompanion entry) {
     try {
       return into(attendance).insert(entry);

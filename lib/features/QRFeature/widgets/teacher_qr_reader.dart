@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:myattendance/features/QRFeature/widgets/custom_border_painter.dart';
+import 'package:myattendance/core/database/app_database.dart';
 
 class TeacherQrReader extends StatefulWidget {
   final Function(String)? onQRCodeDetected;
+  final String sessionID;
 
-  const TeacherQrReader({super.key, this.onQRCodeDetected});
+  const TeacherQrReader({
+    super.key,
+    this.onQRCodeDetected,
+    required this.sessionID,
+  });
 
   @override
   State<TeacherQrReader> createState() => TeacherQrReaderState();
@@ -49,6 +55,19 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
                 final rawQr = capture.barcodes.first.rawValue;
 
                 debugPrint("QR code detected: $rawQr");
+
+                if (rawQr != null) {
+                  final attendance = await AppDatabase.instance
+                      .insertAttendance(
+                        AttendanceCompanion.insert(
+                          studentId: rawQr,
+                          sessionId: int.parse(widget.sessionID),
+                          status: 'present',
+                          synced: false,
+                        ),
+                      );
+                  debugPrint('Attendance loaded: ${attendance.toString()}');
+                }
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

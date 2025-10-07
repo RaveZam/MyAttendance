@@ -27,12 +27,24 @@ class _AttendancePageState extends State<AttendancePage> {
   Student? _selectedStudent;
   final GlobalKey<TeacherQrReaderState> _qrReaderKey =
       GlobalKey<TeacherQrReaderState>();
+  List<AttendanceData> _attendance = [];
   @override
   void initState() {
     super.initState();
     _getSubjectDetails();
     getSessionDetails();
     _loadStudents();
+    _loadAttendance();
+  }
+
+  void _loadAttendance() async {
+    final attendance = await AppDatabase.instance.getAttendanceBySessionID(
+      int.parse(widget.sessionID),
+    );
+    setState(() {
+      _attendance = attendance;
+    });
+    debugPrint('Attendance loaded: ${_attendance.toString()}');
   }
 
   void getSessionDetails() async {
@@ -144,7 +156,6 @@ class _AttendancePageState extends State<AttendancePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Subject / Session card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -287,6 +298,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       const SizedBox(height: 16),
                       TeacherQrReader(
                         key: _qrReaderKey,
+                        sessionID: widget.sessionID,
                         onQRCodeDetected: (qrData) {
                           debugPrint('QR Code detected: $qrData');
                         },
