@@ -233,10 +233,6 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
 
           final subjectId = await db.insertSubject(subjectCompanion);
 
-          // Ensure term_id is set on the subject row (use raw update to be resilient
-          // against out-of-date generated companions)
-          await db.setSubjectTerm(subjectId, subject['term'].id);
-
           if (scheduleObjects.isNotEmpty) {
             List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
               schedule,

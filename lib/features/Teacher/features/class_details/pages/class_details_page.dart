@@ -4,6 +4,7 @@ import 'package:myattendance/features/Teacher/features/students_list/pages/stude
 import 'package:myattendance/features/Teacher/features/class_details/widgets/class_details_info_card.dart';
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/features/Teacher/features/attendance/pages/attendance_page.dart';
+import 'package:drift/drift.dart' as drift;
 
 class ClassDetailsPage extends StatefulWidget {
   final String subject;
@@ -280,11 +281,26 @@ class _QuickActionsSection extends StatelessWidget {
       if (confirmed == true) {
         debugPrint('Start Session confirmed for class: $classID');
         if (context.mounted) {
-          // Navigate to AttendancePage and pass the classID as subjectId
+          final sessionID = await AppDatabase.instance.insertSession(
+            SessionsCompanion(
+              subjectId: drift.Value(int.parse(classID)),
+              startTime: drift.Value(DateTime.now()),
+              endTime: drift.Value(DateTime.now()),
+              status: drift.Value('ongoing'),
+              synced: drift.Value(false),
+              createdAt: drift.Value(DateTime.now()),
+            ),
+          );
+
+          debugPrint('Session ID: $sessionID');
+
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AttendancePage(subjectId: classID),
+              builder: (context) => AttendancePage(
+                subjectId: classID,
+                sessionID: sessionID.toString(),
+              ),
             ),
           );
         }

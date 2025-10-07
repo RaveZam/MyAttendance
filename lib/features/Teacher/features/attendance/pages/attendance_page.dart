@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
+import 'package:intl/intl.dart';
+import 'package:myattendance/features/QRFeature/widgets/teacher_qr_reader.dart';
 
 class AttendancePage extends StatefulWidget {
   final String subjectId;
+  final String sessionID;
 
-  const AttendancePage({super.key, required this.subjectId});
+  const AttendancePage({
+    super.key,
+    required this.subjectId,
+    required this.sessionID,
+  });
 
   @override
   State<AttendancePage> createState() => _AttendancePageState();
@@ -12,11 +19,32 @@ class AttendancePage extends StatefulWidget {
 
 class _AttendancePageState extends State<AttendancePage> {
   Subject? subjectDetails;
+  Session? sessionDetails;
 
+  // UI State Management
+  String _selectedMethod = ''; // 'qr' or 'manual'
+  List<Student> _students = [];
+  Student? _selectedStudent;
+  final GlobalKey<TeacherQrReaderState> _qrReaderKey =
+      GlobalKey<TeacherQrReaderState>();
   @override
   void initState() {
     super.initState();
     _getSubjectDetails();
+    getSessionDetails();
+    _loadStudents();
+  }
+
+  void getSessionDetails() async {
+    final sessions = await AppDatabase.instance.getSessionByID(
+      int.parse(widget.sessionID),
+    );
+    if (sessions.isNotEmpty) {
+      setState(() {
+        sessionDetails = sessions.first;
+      });
+      debugPrint('Session loaded: $sessionDetails');
+    }
   }
 
   void _getSubjectDetails() async {
@@ -43,6 +71,44 @@ class _AttendancePageState extends State<AttendancePage> {
         subjectDetails = null;
       });
     }
+  }
+
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Not available';
+
+    final dateFormat = DateFormat('MMM dd, yyyy');
+    final timeFormat = DateFormat('h:mm a');
+
+    final date = dateFormat.format(dateTime);
+    final time = timeFormat.format(dateTime);
+
+    return '$date at $time';
+  }
+
+  void _loadStudents() async {
+    try {
+      final students = await AppDatabase.instance.getStudentsInSubject(
+        int.parse(widget.subjectId),
+      );
+      setState(() {
+        _students = students;
+      });
+    } catch (e) {
+      debugPrint('Error loading students: $e');
+    }
+  }
+
+  void _selectMethod(String method) {
+    setState(() {
+      _selectedMethod = method;
+    });
+  }
+
+  void _goBack() {
+    setState(() {
+      _selectedMethod = '';
+      _selectedStudent = null;
+    });
   }
 
   @override
@@ -129,47 +195,250 @@ class _AttendancePageState extends State<AttendancePage> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Session Active',
+                          'Session ${sessionDetails?.status}',
                           style: TextStyle(
-                            color: scheme.onSurface.withOpacity(0.8),
+                            color: scheme.onSurface.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Session Started On: ${_formatDateTime(sessionDetails?.startTime)}',
+                      style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: 0.8),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Select Attendance Method
-              Text(
-                'Select Attendance Method',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurface,
+              // Conditional content based on selected method
+              if (_selectedMethod.isEmpty) ...[
+                // Select Attendance Method
+                Text(
+                  'Select Attendance Method',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Column(
-                children: const [
-                  _MethodCard(
-                    icon: Icons.qr_code_2,
-                    title: 'Scan QR Code',
-                    subtitle: 'Students scan QR code to mark attendance',
+                const SizedBox(height: 12),
+                Column(
+                  children: [
+                    _MethodCard(
+                      icon: Icons.qr_code_2,
+                      title: 'Scan QR Code',
+                      subtitle: 'Students scan QR code to mark attendance',
+                      onTap: () => _selectMethod('qr'),
+                    ),
+                    const SizedBox(height: 12),
+                    _MethodCard(
+                      icon: Icons.keyboard,
+                      title: 'Manual Input',
+                      subtitle: 'Manually enter student ID numbers',
+                      onTap: () => _selectMethod('manual'),
+                    ),
+                  ],
+                ),
+              ] else if (_selectedMethod == 'qr') ...[
+                // QR Code Scanner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 12),
-                  _MethodCard(
-                    icon: Icons.keyboard,
-                    title: 'Manual Input',
-                    subtitle: 'Manually enter student ID numbers',
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_back),
+                            style: IconButton.styleFrom(
+                              backgroundColor: scheme.surface,
+                              foregroundColor: scheme.onSurface,
+                            ),
+                          ),
+
+                          Text(
+                            'Scan QR Code',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TeacherQrReader(
+                        key: _qrReaderKey,
+                        onQRCodeDetected: (qrData) {
+                          debugPrint('QR Code detected: $qrData');
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Position the QR code within the frame to scan',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      // ElevatedButton.icon(
+                      //   onPressed: () {
+                      //     _qrReaderKey.currentState?.resetScanner();
+                      //   },
+                      //   icon: const Icon(Icons.refresh),
+                      //   label: const Text('Scan Another QR Code'),
+                      //   style: ElevatedButton.styleFrom(
+                      //     backgroundColor: scheme.primary,
+                      //     foregroundColor: scheme.onPrimary,
+                      //     padding: const EdgeInsets.symmetric(
+                      //       horizontal: 20,
+                      //       vertical: 12,
+                      //     ),
+                      //   ),
+                      // ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ] else if (_selectedMethod == 'manual') ...[
+                // Manual Input
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_back),
+                            style: IconButton.styleFrom(
+                              backgroundColor: scheme.surface,
+                              foregroundColor: scheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Select Student',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<Student>(
+                        value: _selectedStudent,
+                        decoration: InputDecoration(
+                          labelText: _students.isEmpty
+                              ? 'Loading students...'
+                              : 'Choose a student',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                        ),
+                        items: _students.isEmpty
+                            ? [
+                                DropdownMenuItem<Student>(
+                                  value: null,
+                                  child: Text(
+                                    'No students found',
+                                    style: TextStyle(
+                                      color: scheme.onSurface.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ]
+                            : _students.map((Student student) {
+                                return DropdownMenuItem<Student>(
+                                  value: student,
+                                  child: Text(
+                                    '${student.firstName} ${student.lastName} (${student.studentId})',
+                                  ),
+                                );
+                              }).toList(),
+                        onChanged: _students.isEmpty
+                            ? null
+                            : (Student? newValue) {
+                                setState(() {
+                                  _selectedStudent = newValue;
+                                });
+                              },
+                      ),
+                      if (_selectedStudent != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: scheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                color: scheme.onPrimaryContainer,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Selected: ${_selectedStudent!.firstName} ${_selectedStudent!.lastName}',
+                                  style: TextStyle(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
 
-              // Current Session summary
+              // Current Session summary (always visible)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -225,24 +494,25 @@ class _AttendancePageState extends State<AttendancePage> {
               // (Students list omitted)
               const SizedBox(height: 12),
 
-              // Buttons
+              // Buttons (always visible)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: scheme.primary.withOpacity(0.95),
+                      backgroundColor: scheme.primary.withValues(alpha: 0.95),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     onPressed: () {},
-                    child: const Text(
+                    child: Text(
                       'End Session',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: scheme.onPrimary,
                       ),
                     ),
                   ),
@@ -279,11 +549,13 @@ class _MethodCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _MethodCard({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
@@ -294,7 +566,7 @@ class _MethodCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           decoration: BoxDecoration(

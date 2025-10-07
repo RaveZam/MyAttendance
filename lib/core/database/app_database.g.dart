@@ -2148,6 +2148,849 @@ class SubjectStudentsCompanion extends UpdateCompanion<SubjectStudent> {
   }
 }
 
+class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _subjectIdMeta = const VerificationMeta(
+    'subjectId',
+  );
+  @override
+  late final GeneratedColumn<int> subjectId = GeneratedColumn<int>(
+    'subject_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES subjects(id) ON DELETE CASCADE',
+  );
+  static const VerificationMeta _startTimeMeta = const VerificationMeta(
+    'startTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startTime = GeneratedColumn<DateTime>(
+    'start_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endTimeMeta = const VerificationMeta(
+    'endTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endTime = GeneratedColumn<DateTime>(
+    'end_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    subjectId,
+    startTime,
+    endTime,
+    status,
+    synced,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Session> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('subject_id')) {
+      context.handle(
+        _subjectIdMeta,
+        subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subjectIdMeta);
+    }
+    if (data.containsKey('start_time')) {
+      context.handle(
+        _startTimeMeta,
+        startTime.isAcceptableOrUnknown(data['start_time']!, _startTimeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startTimeMeta);
+    }
+    if (data.containsKey('end_time')) {
+      context.handle(
+        _endTimeMeta,
+        endTime.isAcceptableOrUnknown(data['end_time']!, _endTimeMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Session map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Session(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      subjectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}subject_id'],
+      )!,
+      startTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_time'],
+      )!,
+      endTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_time'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionsTable createAlias(String alias) {
+    return $SessionsTable(attachedDatabase, alias);
+  }
+}
+
+class Session extends DataClass implements Insertable<Session> {
+  final int id;
+  final int subjectId;
+  final DateTime startTime;
+  final DateTime? endTime;
+  final String status;
+  final bool synced;
+  final DateTime createdAt;
+  const Session({
+    required this.id,
+    required this.subjectId,
+    required this.startTime,
+    this.endTime,
+    required this.status,
+    required this.synced,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['subject_id'] = Variable<int>(subjectId);
+    map['start_time'] = Variable<DateTime>(startTime);
+    if (!nullToAbsent || endTime != null) {
+      map['end_time'] = Variable<DateTime>(endTime);
+    }
+    map['status'] = Variable<String>(status);
+    map['synced'] = Variable<bool>(synced);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SessionsCompanion toCompanion(bool nullToAbsent) {
+    return SessionsCompanion(
+      id: Value(id),
+      subjectId: Value(subjectId),
+      startTime: Value(startTime),
+      endTime: endTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endTime),
+      status: Value(status),
+      synced: Value(synced),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Session.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Session(
+      id: serializer.fromJson<int>(json['id']),
+      subjectId: serializer.fromJson<int>(json['subjectId']),
+      startTime: serializer.fromJson<DateTime>(json['startTime']),
+      endTime: serializer.fromJson<DateTime?>(json['endTime']),
+      status: serializer.fromJson<String>(json['status']),
+      synced: serializer.fromJson<bool>(json['synced']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'subjectId': serializer.toJson<int>(subjectId),
+      'startTime': serializer.toJson<DateTime>(startTime),
+      'endTime': serializer.toJson<DateTime?>(endTime),
+      'status': serializer.toJson<String>(status),
+      'synced': serializer.toJson<bool>(synced),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Session copyWith({
+    int? id,
+    int? subjectId,
+    DateTime? startTime,
+    Value<DateTime?> endTime = const Value.absent(),
+    String? status,
+    bool? synced,
+    DateTime? createdAt,
+  }) => Session(
+    id: id ?? this.id,
+    subjectId: subjectId ?? this.subjectId,
+    startTime: startTime ?? this.startTime,
+    endTime: endTime.present ? endTime.value : this.endTime,
+    status: status ?? this.status,
+    synced: synced ?? this.synced,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  Session copyWithCompanion(SessionsCompanion data) {
+    return Session(
+      id: data.id.present ? data.id.value : this.id,
+      subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      startTime: data.startTime.present ? data.startTime.value : this.startTime,
+      endTime: data.endTime.present ? data.endTime.value : this.endTime,
+      status: data.status.present ? data.status.value : this.status,
+      synced: data.synced.present ? data.synced.value : this.synced,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Session(')
+          ..write('id: $id, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('status: $status, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, subjectId, startTime, endTime, status, synced, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Session &&
+          other.id == this.id &&
+          other.subjectId == this.subjectId &&
+          other.startTime == this.startTime &&
+          other.endTime == this.endTime &&
+          other.status == this.status &&
+          other.synced == this.synced &&
+          other.createdAt == this.createdAt);
+}
+
+class SessionsCompanion extends UpdateCompanion<Session> {
+  final Value<int> id;
+  final Value<int> subjectId;
+  final Value<DateTime> startTime;
+  final Value<DateTime?> endTime;
+  final Value<String> status;
+  final Value<bool> synced;
+  final Value<DateTime> createdAt;
+  const SessionsCompanion({
+    this.id = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.startTime = const Value.absent(),
+    this.endTime = const Value.absent(),
+    this.status = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SessionsCompanion.insert({
+    this.id = const Value.absent(),
+    required int subjectId,
+    required DateTime startTime,
+    this.endTime = const Value.absent(),
+    required String status,
+    required bool synced,
+    this.createdAt = const Value.absent(),
+  }) : subjectId = Value(subjectId),
+       startTime = Value(startTime),
+       status = Value(status),
+       synced = Value(synced);
+  static Insertable<Session> custom({
+    Expression<int>? id,
+    Expression<int>? subjectId,
+    Expression<DateTime>? startTime,
+    Expression<DateTime>? endTime,
+    Expression<String>? status,
+    Expression<bool>? synced,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (subjectId != null) 'subject_id': subjectId,
+      if (startTime != null) 'start_time': startTime,
+      if (endTime != null) 'end_time': endTime,
+      if (status != null) 'status': status,
+      if (synced != null) 'synced': synced,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SessionsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? subjectId,
+    Value<DateTime>? startTime,
+    Value<DateTime?>? endTime,
+    Value<String>? status,
+    Value<bool>? synced,
+    Value<DateTime>? createdAt,
+  }) {
+    return SessionsCompanion(
+      id: id ?? this.id,
+      subjectId: subjectId ?? this.subjectId,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      status: status ?? this.status,
+      synced: synced ?? this.synced,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (subjectId.present) {
+      map['subject_id'] = Variable<int>(subjectId.value);
+    }
+    if (startTime.present) {
+      map['start_time'] = Variable<DateTime>(startTime.value);
+    }
+    if (endTime.present) {
+      map['end_time'] = Variable<DateTime>(endTime.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('status: $status, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AttendanceTable extends Attendance
+    with TableInfo<$AttendanceTable, AttendanceData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AttendanceTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _studentIdMeta = const VerificationMeta(
+    'studentId',
+  );
+  @override
+  late final GeneratedColumn<String> studentId = GeneratedColumn<String>(
+    'student_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<int> sessionId = GeneratedColumn<int>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES sessions(id) ON DELETE CASCADE',
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    studentId,
+    sessionId,
+    status,
+    synced,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'attendance';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AttendanceData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('student_id')) {
+      context.handle(
+        _studentIdMeta,
+        studentId.isAcceptableOrUnknown(data['student_id']!, _studentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_studentIdMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncedMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AttendanceData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AttendanceData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      studentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}student_id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}session_id'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AttendanceTable createAlias(String alias) {
+    return $AttendanceTable(attachedDatabase, alias);
+  }
+}
+
+class AttendanceData extends DataClass implements Insertable<AttendanceData> {
+  final int id;
+  final String studentId;
+  final int sessionId;
+  final String status;
+  final bool synced;
+  final DateTime createdAt;
+  const AttendanceData({
+    required this.id,
+    required this.studentId,
+    required this.sessionId,
+    required this.status,
+    required this.synced,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['student_id'] = Variable<String>(studentId);
+    map['session_id'] = Variable<int>(sessionId);
+    map['status'] = Variable<String>(status);
+    map['synced'] = Variable<bool>(synced);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AttendanceCompanion toCompanion(bool nullToAbsent) {
+    return AttendanceCompanion(
+      id: Value(id),
+      studentId: Value(studentId),
+      sessionId: Value(sessionId),
+      status: Value(status),
+      synced: Value(synced),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AttendanceData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AttendanceData(
+      id: serializer.fromJson<int>(json['id']),
+      studentId: serializer.fromJson<String>(json['studentId']),
+      sessionId: serializer.fromJson<int>(json['sessionId']),
+      status: serializer.fromJson<String>(json['status']),
+      synced: serializer.fromJson<bool>(json['synced']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'studentId': serializer.toJson<String>(studentId),
+      'sessionId': serializer.toJson<int>(sessionId),
+      'status': serializer.toJson<String>(status),
+      'synced': serializer.toJson<bool>(synced),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AttendanceData copyWith({
+    int? id,
+    String? studentId,
+    int? sessionId,
+    String? status,
+    bool? synced,
+    DateTime? createdAt,
+  }) => AttendanceData(
+    id: id ?? this.id,
+    studentId: studentId ?? this.studentId,
+    sessionId: sessionId ?? this.sessionId,
+    status: status ?? this.status,
+    synced: synced ?? this.synced,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AttendanceData copyWithCompanion(AttendanceCompanion data) {
+    return AttendanceData(
+      id: data.id.present ? data.id.value : this.id,
+      studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      status: data.status.present ? data.status.value : this.status,
+      synced: data.synced.present ? data.synced.value : this.synced,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttendanceData(')
+          ..write('id: $id, ')
+          ..write('studentId: $studentId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('status: $status, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, studentId, sessionId, status, synced, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AttendanceData &&
+          other.id == this.id &&
+          other.studentId == this.studentId &&
+          other.sessionId == this.sessionId &&
+          other.status == this.status &&
+          other.synced == this.synced &&
+          other.createdAt == this.createdAt);
+}
+
+class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
+  final Value<int> id;
+  final Value<String> studentId;
+  final Value<int> sessionId;
+  final Value<String> status;
+  final Value<bool> synced;
+  final Value<DateTime> createdAt;
+  const AttendanceCompanion({
+    this.id = const Value.absent(),
+    this.studentId = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AttendanceCompanion.insert({
+    this.id = const Value.absent(),
+    required String studentId,
+    required int sessionId,
+    required String status,
+    required bool synced,
+    this.createdAt = const Value.absent(),
+  }) : studentId = Value(studentId),
+       sessionId = Value(sessionId),
+       status = Value(status),
+       synced = Value(synced);
+  static Insertable<AttendanceData> custom({
+    Expression<int>? id,
+    Expression<String>? studentId,
+    Expression<int>? sessionId,
+    Expression<String>? status,
+    Expression<bool>? synced,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (studentId != null) 'student_id': studentId,
+      if (sessionId != null) 'session_id': sessionId,
+      if (status != null) 'status': status,
+      if (synced != null) 'synced': synced,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AttendanceCompanion copyWith({
+    Value<int>? id,
+    Value<String>? studentId,
+    Value<int>? sessionId,
+    Value<String>? status,
+    Value<bool>? synced,
+    Value<DateTime>? createdAt,
+  }) {
+    return AttendanceCompanion(
+      id: id ?? this.id,
+      studentId: studentId ?? this.studentId,
+      sessionId: sessionId ?? this.sessionId,
+      status: status ?? this.status,
+      synced: synced ?? this.synced,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (studentId.present) {
+      map['student_id'] = Variable<String>(studentId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<int>(sessionId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AttendanceCompanion(')
+          ..write('id: $id, ')
+          ..write('studentId: $studentId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('status: $status, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2158,6 +3001,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SubjectStudentsTable subjectStudents = $SubjectStudentsTable(
     this,
   );
+  late final $SessionsTable sessions = $SessionsTable(this);
+  late final $AttendanceTable attendance = $AttendanceTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2168,6 +3013,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     schedules,
     students,
     subjectStudents,
+    sessions,
+    attendance,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2198,6 +3045,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('subject_students', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'subjects',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sessions', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('attendance', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2574,6 +3435,25 @@ final class $$SubjectsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$SessionsTable, List<Session>> _sessionsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.sessions,
+    aliasName: $_aliasNameGenerator(db.subjects.id, db.sessions.subjectId),
+  );
+
+  $$SessionsTableProcessedTableManager get sessionsRefs {
+    final manager = $$SessionsTableTableManager(
+      $_db,
+      $_db.sessions,
+    ).filter((f) => f.subjectId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_sessionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SubjectsTableFilterComposer
@@ -2689,6 +3569,31 @@ class $$SubjectsTableFilterComposer
           }) => $$SubjectStudentsTableFilterComposer(
             $db: $db,
             $table: $db.subjectStudents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sessionsRefs(
+    Expression<bool> Function($$SessionsTableFilterComposer f) f,
+  ) {
+    final $$SessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.subjectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.sessions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2881,6 +3786,31 @@ class $$SubjectsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> sessionsRefs<T extends Object>(
+    Expression<T> Function($$SessionsTableAnnotationComposer a) f,
+  ) {
+    final $$SessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.subjectId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SubjectsTableTableManager
@@ -2900,6 +3830,7 @@ class $$SubjectsTableTableManager
             bool termId,
             bool schedulesRefs,
             bool subjectStudentsRefs,
+            bool sessionsRefs,
           })
         > {
   $$SubjectsTableTableManager(_$AppDatabase db, $SubjectsTable table)
@@ -2970,12 +3901,14 @@ class $$SubjectsTableTableManager
                 termId = false,
                 schedulesRefs = false,
                 subjectStudentsRefs = false,
+                sessionsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (schedulesRefs) db.schedules,
                     if (subjectStudentsRefs) db.subjectStudents,
+                    if (sessionsRefs) db.sessions,
                   ],
                   addJoins:
                       <
@@ -3053,6 +3986,27 @@ class $$SubjectsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (sessionsRefs)
+                        await $_getPrefetchedData<
+                          Subject,
+                          $SubjectsTable,
+                          Session
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SubjectsTableReferences
+                              ._sessionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SubjectsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.subjectId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -3077,6 +4031,7 @@ typedef $$SubjectsTableProcessedTableManager =
         bool termId,
         bool schedulesRefs,
         bool subjectStudentsRefs,
+        bool sessionsRefs,
       })
     >;
 typedef $$SchedulesTableCreateCompanionBuilder =
@@ -4181,6 +5136,774 @@ typedef $$SubjectStudentsTableProcessedTableManager =
       SubjectStudent,
       PrefetchHooks Function({bool studentId, bool subjectId})
     >;
+typedef $$SessionsTableCreateCompanionBuilder =
+    SessionsCompanion Function({
+      Value<int> id,
+      required int subjectId,
+      required DateTime startTime,
+      Value<DateTime?> endTime,
+      required String status,
+      required bool synced,
+      Value<DateTime> createdAt,
+    });
+typedef $$SessionsTableUpdateCompanionBuilder =
+    SessionsCompanion Function({
+      Value<int> id,
+      Value<int> subjectId,
+      Value<DateTime> startTime,
+      Value<DateTime?> endTime,
+      Value<String> status,
+      Value<bool> synced,
+      Value<DateTime> createdAt,
+    });
+
+final class $$SessionsTableReferences
+    extends BaseReferences<_$AppDatabase, $SessionsTable, Session> {
+  $$SessionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SubjectsTable _subjectIdTable(_$AppDatabase db) => db.subjects
+      .createAlias($_aliasNameGenerator(db.sessions.subjectId, db.subjects.id));
+
+  $$SubjectsTableProcessedTableManager get subjectId {
+    final $_column = $_itemColumn<int>('subject_id')!;
+
+    final manager = $$SubjectsTableTableManager(
+      $_db,
+      $_db.subjects,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_subjectIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$AttendanceTable, List<AttendanceData>>
+  _attendanceRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.attendance,
+    aliasName: $_aliasNameGenerator(db.sessions.id, db.attendance.sessionId),
+  );
+
+  $$AttendanceTableProcessedTableManager get attendanceRefs {
+    final manager = $$AttendanceTableTableManager(
+      $_db,
+      $_db.attendance,
+    ).filter((f) => f.sessionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_attendanceRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionsTable> {
+  $$SessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SubjectsTableFilterComposer get subjectId {
+    final $$SubjectsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.subjectId,
+      referencedTable: $db.subjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SubjectsTableFilterComposer(
+            $db: $db,
+            $table: $db.subjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> attendanceRefs(
+    Expression<bool> Function($$AttendanceTableFilterComposer f) f,
+  ) {
+    final $$AttendanceTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.attendance,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AttendanceTableFilterComposer(
+            $db: $db,
+            $table: $db.attendance,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionsTable> {
+  $$SessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startTime => $composableBuilder(
+    column: $table.startTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endTime => $composableBuilder(
+    column: $table.endTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SubjectsTableOrderingComposer get subjectId {
+    final $$SubjectsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.subjectId,
+      referencedTable: $db.subjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SubjectsTableOrderingComposer(
+            $db: $db,
+            $table: $db.subjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionsTable> {
+  $$SessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startTime =>
+      $composableBuilder(column: $table.startTime, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endTime =>
+      $composableBuilder(column: $table.endTime, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SubjectsTableAnnotationComposer get subjectId {
+    final $$SubjectsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.subjectId,
+      referencedTable: $db.subjects,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SubjectsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.subjects,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> attendanceRefs<T extends Object>(
+    Expression<T> Function($$AttendanceTableAnnotationComposer a) f,
+  ) {
+    final $$AttendanceTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.attendance,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AttendanceTableAnnotationComposer(
+            $db: $db,
+            $table: $db.attendance,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionsTable,
+          Session,
+          $$SessionsTableFilterComposer,
+          $$SessionsTableOrderingComposer,
+          $$SessionsTableAnnotationComposer,
+          $$SessionsTableCreateCompanionBuilder,
+          $$SessionsTableUpdateCompanionBuilder,
+          (Session, $$SessionsTableReferences),
+          Session,
+          PrefetchHooks Function({bool subjectId, bool attendanceRefs})
+        > {
+  $$SessionsTableTableManager(_$AppDatabase db, $SessionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> subjectId = const Value.absent(),
+                Value<DateTime> startTime = const Value.absent(),
+                Value<DateTime?> endTime = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SessionsCompanion(
+                id: id,
+                subjectId: subjectId,
+                startTime: startTime,
+                endTime: endTime,
+                status: status,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int subjectId,
+                required DateTime startTime,
+                Value<DateTime?> endTime = const Value.absent(),
+                required String status,
+                required bool synced,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SessionsCompanion.insert(
+                id: id,
+                subjectId: subjectId,
+                startTime: startTime,
+                endTime: endTime,
+                status: status,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SessionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({subjectId = false, attendanceRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (attendanceRefs) db.attendance],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (subjectId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.subjectId,
+                                referencedTable: $$SessionsTableReferences
+                                    ._subjectIdTable(db),
+                                referencedColumn: $$SessionsTableReferences
+                                    ._subjectIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (attendanceRefs)
+                    await $_getPrefetchedData<
+                      Session,
+                      $SessionsTable,
+                      AttendanceData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$SessionsTableReferences
+                          ._attendanceRefsTable(db),
+                      managerFromTypedResult: (p0) => $$SessionsTableReferences(
+                        db,
+                        table,
+                        p0,
+                      ).attendanceRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.sessionId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionsTable,
+      Session,
+      $$SessionsTableFilterComposer,
+      $$SessionsTableOrderingComposer,
+      $$SessionsTableAnnotationComposer,
+      $$SessionsTableCreateCompanionBuilder,
+      $$SessionsTableUpdateCompanionBuilder,
+      (Session, $$SessionsTableReferences),
+      Session,
+      PrefetchHooks Function({bool subjectId, bool attendanceRefs})
+    >;
+typedef $$AttendanceTableCreateCompanionBuilder =
+    AttendanceCompanion Function({
+      Value<int> id,
+      required String studentId,
+      required int sessionId,
+      required String status,
+      required bool synced,
+      Value<DateTime> createdAt,
+    });
+typedef $$AttendanceTableUpdateCompanionBuilder =
+    AttendanceCompanion Function({
+      Value<int> id,
+      Value<String> studentId,
+      Value<int> sessionId,
+      Value<String> status,
+      Value<bool> synced,
+      Value<DateTime> createdAt,
+    });
+
+final class $$AttendanceTableReferences
+    extends BaseReferences<_$AppDatabase, $AttendanceTable, AttendanceData> {
+  $$AttendanceTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessions.createAlias(
+        $_aliasNameGenerator(db.attendance.sessionId, db.sessions.id),
+      );
+
+  $$SessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<int>('session_id')!;
+
+    final manager = $$SessionsTableTableManager(
+      $_db,
+      $_db.sessions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AttendanceTableFilterComposer
+    extends Composer<_$AppDatabase, $AttendanceTable> {
+  $$AttendanceTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get studentId => $composableBuilder(
+    column: $table.studentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionsTableFilterComposer get sessionId {
+    final $$SessionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableFilterComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AttendanceTableOrderingComposer
+    extends Composer<_$AppDatabase, $AttendanceTable> {
+  $$AttendanceTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get studentId => $composableBuilder(
+    column: $table.studentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionsTableOrderingComposer get sessionId {
+    final $$SessionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AttendanceTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AttendanceTable> {
+  $$AttendanceTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get studentId =>
+      $composableBuilder(column: $table.studentId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SessionsTableAnnotationComposer get sessionId {
+    final $$SessionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AttendanceTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AttendanceTable,
+          AttendanceData,
+          $$AttendanceTableFilterComposer,
+          $$AttendanceTableOrderingComposer,
+          $$AttendanceTableAnnotationComposer,
+          $$AttendanceTableCreateCompanionBuilder,
+          $$AttendanceTableUpdateCompanionBuilder,
+          (AttendanceData, $$AttendanceTableReferences),
+          AttendanceData,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$AttendanceTableTableManager(_$AppDatabase db, $AttendanceTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AttendanceTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AttendanceTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AttendanceTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> studentId = const Value.absent(),
+                Value<int> sessionId = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AttendanceCompanion(
+                id: id,
+                studentId: studentId,
+                sessionId: sessionId,
+                status: status,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String studentId,
+                required int sessionId,
+                required String status,
+                required bool synced,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AttendanceCompanion.insert(
+                id: id,
+                studentId: studentId,
+                sessionId: sessionId,
+                status: status,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AttendanceTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.sessionId,
+                                referencedTable: $$AttendanceTableReferences
+                                    ._sessionIdTable(db),
+                                referencedColumn: $$AttendanceTableReferences
+                                    ._sessionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AttendanceTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AttendanceTable,
+      AttendanceData,
+      $$AttendanceTableFilterComposer,
+      $$AttendanceTableOrderingComposer,
+      $$AttendanceTableAnnotationComposer,
+      $$AttendanceTableCreateCompanionBuilder,
+      $$AttendanceTableUpdateCompanionBuilder,
+      (AttendanceData, $$AttendanceTableReferences),
+      AttendanceData,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4195,4 +5918,8 @@ class $AppDatabaseManager {
       $$StudentsTableTableManager(_db, _db.students);
   $$SubjectStudentsTableTableManager get subjectStudents =>
       $$SubjectStudentsTableTableManager(_db, _db.subjectStudents);
+  $$SessionsTableTableManager get sessions =>
+      $$SessionsTableTableManager(_db, _db.sessions);
+  $$AttendanceTableTableManager get attendance =>
+      $$AttendanceTableTableManager(_db, _db.attendance);
 }
