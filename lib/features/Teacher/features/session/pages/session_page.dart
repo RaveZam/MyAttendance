@@ -21,6 +21,9 @@ class _SessionPageState extends State<SessionPage> {
   // Sort state
   bool _sortDesc = true; // newest to oldest by default
   List<Session> _filteredSessions = [];
+  // Bulk delete state
+  bool _bulkMode = false;
+  final Set<int> _selectedIds = <int>{};
 
   @override
   void initState() {
@@ -115,6 +118,23 @@ class _SessionPageState extends State<SessionPage> {
               ),
             ],
           ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: scheme.onSurface),
+            onSelected: (value) {
+              if (value == 'bulk_delete') {
+                setState(() {
+                  _bulkMode = true;
+                  _selectedIds.clear();
+                });
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'bulk_delete',
+                child: Text('Delete sessions'),
+              ),
+            ],
+          ),
         ],
       ),
       backgroundColor: scheme.surface,
@@ -167,6 +187,13 @@ class _SessionPageState extends State<SessionPage> {
 
                             return InkWell(
                               onTap: () {
+                                if (_bulkMode) {
+                                  _toggleSelect(
+                                    s.id,
+                                    !_selectedIds.contains(s.id),
+                                  );
+                                  return;
+                                }
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -211,15 +238,22 @@ class _SessionPageState extends State<SessionPage> {
                                           ),
                                         ),
                                         const Spacer(),
-                                        Text(
-                                          statusLabel,
-                                          style: TextStyle(
-                                            color: scheme.onSurface.withOpacity(
-                                              0.7,
+
+                                        if (_bulkMode)
+                                          Checkbox(
+                                            value: _selectedIds.contains(s.id),
+                                            onChanged: (v) =>
+                                                _toggleSelect(s.id, v ?? false),
+                                          )
+                                        else
+                                          Text(
+                                            statusLabel,
+                                            style: TextStyle(
+                                              color: scheme.onSurface
+                                                  .withOpacity(0.7),
+                                              fontWeight: FontWeight.w600,
                                             ),
-                                            fontWeight: FontWeight.w600,
                                           ),
-                                        ),
                                       ],
                                     ),
 
@@ -251,7 +285,6 @@ class _SessionPageState extends State<SessionPage> {
 
                                     const SizedBox(height: 12),
 
-                                    // Footer: date, duration, students
                                     Row(
                                       children: [
                                         Icon(
@@ -318,6 +351,41 @@ class _SessionPageState extends State<SessionPage> {
                     ),
             ),
           ),
+          if (_bulkMode)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).dividerColor.withOpacity(0.2),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _bulkMode = false;
+                        _selectedIds.clear();
+                      });
+                    },
+                    child: const Text('Cancel'),
+                  ),
+
+                  ElevatedButton.icon(
+                    onPressed: _selectedIds.isEmpty ? null : _confirmBulkDelete,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.delete),
+                    label: Text('Delete (${_selectedIds.length})'),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -339,6 +407,124 @@ class _SessionPageState extends State<SessionPage> {
       final cmp = at.compareTo(bt);
       return desc ? -cmp : cmp;
     });
+  }
+
+  void _toggleSelect(int id, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedIds.add(id);
+      } else {
+        _selectedIds.remove(id);
+      }
+    });
+  }
+
+  Future<void> _confirmBulkDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete selected sessions?'),
+        content: Text(
+          'This will delete ${_selectedIds.length} session(s) and their attendance.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        // delete sequentially to keep it simple
+        for (final id in _selectedIds) {
+          await db.deleteSessionById(id);
+        }
+        await _loadSessions();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Selected sessions deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete sessions: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _bulkMode = false;
+            _selectedIds.clear();
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteSession(
+    BuildContext context,
+    int sessionId,
+  ) async {
+    final scheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete session?'),
+        content: const Text(
+          'This will permanently remove the session and its attendance records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await db.deleteSessionById(sessionId);
+        await _loadSessions();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete session: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override

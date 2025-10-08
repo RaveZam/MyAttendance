@@ -303,6 +303,10 @@ class AppDatabase extends _$AppDatabase {
     await clearSessions();
   }
 
+  Future<void> deleteSessionById(int id) async {
+    await (delete(sessions)..where((tbl) => tbl.id.equals(id))).go();
+  }
+
   Future<List<Term>> getTerms() => select(terms).get();
 
   Future<Term?> getTermById(int id) async {
