@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:myattendance/core/database/app_database.dart';
 import 'package:intl/intl.dart';
 import 'package:myattendance/features/QRFeature/widgets/teacher_qr_reader.dart';
+import 'package:myattendance/features/Teacher/features/attendance/widgets/attendance_list.dart';
 
 class AttendancePage extends StatefulWidget {
   final String subjectId;
@@ -27,7 +28,9 @@ class _AttendancePageState extends State<AttendancePage> {
   Student? _selectedStudent;
   final GlobalKey<TeacherQrReaderState> _qrReaderKey =
       GlobalKey<TeacherQrReaderState>();
+
   List<AttendanceData> _attendance = [];
+
   @override
   void initState() {
     super.initState();
@@ -122,6 +125,17 @@ class _AttendancePageState extends State<AttendancePage> {
       _selectedStudent = null;
     });
   }
+
+  // List<AttendanceData> _attendanceList = [];
+
+  // void loadAttendance() async {
+  //   final attendance = await AppDatabase.instance.getAttendanceBySessionID(
+  //     int.parse(widget.sessionID),
+  //   );
+  //   setState(() {
+  //     _attendance = attendance;
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +311,8 @@ class _AttendancePageState extends State<AttendancePage> {
                       ),
                       const SizedBox(height: 16),
                       TeacherQrReader(
+                        attendanceList: _attendance,
+                        loadAttendance: _loadAttendance,
                         key: _qrReaderKey,
                         sessionID: widget.sessionID,
                         onQRCodeDetected: (qrData) {
@@ -503,7 +519,10 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
               const SizedBox(height: 8),
 
-              // (Students list omitted)
+              AttendanceList(
+                sessionID: widget.sessionID,
+                attendanceList: _attendance,
+              ),
               const SizedBox(height: 12),
 
               // Buttons (always visible)

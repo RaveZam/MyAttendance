@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:myattendance/features/QRFeature/widgets/custom_border_painter.dart';
 import 'package:myattendance/core/database/app_database.dart';
+import 'dart:convert';
 
 class TeacherQrReader extends StatefulWidget {
   final Function(String)? onQRCodeDetected;
   final String sessionID;
+  final List<AttendanceData> attendanceList;
+  final Function() loadAttendance;
 
   const TeacherQrReader({
     super.key,
     this.onQRCodeDetected,
     required this.sessionID,
+    required this.attendanceList,
+    required this.loadAttendance,
   });
 
   @override
@@ -25,6 +30,7 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
   @override
   void initState() {
     super.initState();
+    widget.loadAttendance();
   }
 
   @override
@@ -54,7 +60,24 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
 
                 final rawQr = capture.barcodes.first.rawValue;
 
-                debugPrint("QR code detected: $rawQr");
+                try {
+                  final Map<String, dynamic> data = jsonDecode(rawQr ?? '');
+                  debugPrint("QR code detected: $data");
+
+                  final attendance = await AppDatabase.instance
+                      .insertAttendance(
+                        AttendanceCompanion.insert(
+                          studentId: data['student_id'],
+                          sessionId: int.parse(widget.sessionID),
+                          status: 'present',
+                          synced: false,
+                        ),
+                      );
+                  widget.loadAttendance();
+                  debugPrint('Attendance Inserted: ${attendance.toString()}');
+                } catch (e) {
+                  debugPrint('Error inserting attendance: $e');
+                }
 
                 if (rawQr != null) {
                   final attendance = await AppDatabase.instance
