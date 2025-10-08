@@ -38,6 +38,7 @@ class _AttendancePageState extends State<AttendancePage> {
     getSessionDetails();
     _loadStudents();
     _loadAttendance();
+    // AppDatabase.instance.clearAttendanceSession();
   }
 
   void _loadAttendance() async {
@@ -47,7 +48,6 @@ class _AttendancePageState extends State<AttendancePage> {
     setState(() {
       _attendance = attendance;
     });
-    debugPrint('Attendance loaded: ${_attendance.toString()}');
   }
 
   void getSessionDetails() async {

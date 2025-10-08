@@ -273,6 +273,15 @@ class AppDatabase extends _$AppDatabase {
     await deleteAllSubjects();
   }
 
+  Future<void> clearAttendance() => delete(attendance).go();
+
+  Future<void> clearSessions() => delete(sessions).go();
+
+  Future<void> clearAttendanceSession() async {
+    await clearAttendance();
+    await clearSessions();
+  }
+
   Future<List<Term>> getTerms() => select(terms).get();
 
   Future<Term?> getTermById(int id) async {

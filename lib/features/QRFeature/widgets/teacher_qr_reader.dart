@@ -62,7 +62,14 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
 
                 try {
                   final Map<String, dynamic> data = jsonDecode(rawQr ?? '');
+
+                  debugPrint("Attendance List: ${widget.attendanceList}");
                   debugPrint("QR code detected: $data");
+                  final existingAttendance = widget.attendanceList.any(
+                    (att) => att.studentId == data['student_id'],
+                  );
+
+                  if (existingAttendance) return;
 
                   final attendance = await AppDatabase.instance
                       .insertAttendance(
@@ -77,19 +84,6 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
                   debugPrint('Attendance Inserted: ${attendance.toString()}');
                 } catch (e) {
                   debugPrint('Error inserting attendance: $e');
-                }
-
-                if (rawQr != null) {
-                  final attendance = await AppDatabase.instance
-                      .insertAttendance(
-                        AttendanceCompanion.insert(
-                          studentId: rawQr,
-                          sessionId: int.parse(widget.sessionID),
-                          status: 'present',
-                          synced: false,
-                        ),
-                      );
-                  debugPrint('Attendance loaded: ${attendance.toString()}');
                 }
 
                 ScaffoldMessenger.of(context).showSnackBar(
