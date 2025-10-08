@@ -244,6 +244,20 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  Future<void> finishSession(int sessionID) async {
+    await (update(sessions)..where((tbl) => tbl.id.equals(sessionID))).write(
+      SessionsCompanion(status: Value('ended'), endTime: Value(DateTime.now())),
+    );
+  }
+
+  Future<List<Session>> checkForOngoingSession(int subjectID) {
+    return (select(sessions)..where(
+          (tbl) =>
+              tbl.subjectId.equals(subjectID) & tbl.status.equals('ongoing'),
+        ))
+        .get();
+  }
+
   Future<void> insertSchedules(List<SchedulesCompanion> entries) async {
     await batch((batch) {
       batch.insertAll(schedules, entries);

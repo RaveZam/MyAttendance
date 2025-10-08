@@ -40,16 +40,70 @@ class ClassDetailsPage extends StatefulWidget {
   State<ClassDetailsPage> createState() => _ClassDetailsPageState();
 }
 
-class _ClassDetailsPageState extends State<ClassDetailsPage> {
+class _ClassDetailsPageState extends State<ClassDetailsPage>
+    with WidgetsBindingObserver {
   final db = AppDatabase.instance;
 
   List<Map<String, dynamic>> students = [];
 
+  int activeSessionID = 0;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     debugPrint("Class Details Page: ${widget.classID.toString()}");
     getAllStudents();
+    _checkForOngoingSession();
+    // AppDatabase.instance.clearAttendanceSession();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh session state when app resumes
+      _refreshSessionState();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Only refresh when dependencies actually change, not on every build
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _refreshSessionState();
+        }
+      });
+    }
+  }
+
+  Future<void> _checkForOngoingSession() async {
+    final session = await AppDatabase.instance.checkForOngoingSession(
+      int.parse(widget.classID),
+    );
+    debugPrint("Ongoing Found: ${session.first.id}");
+    if (session.isNotEmpty) {
+      setState(() {
+        activeSessionID = int.parse(session.first.id.toString());
+      });
+    } else {
+      setState(() {
+        activeSessionID = 0;
+      });
+    }
+  }
+
+  Future<void> _refreshSessionState() async {
+    await _checkForOngoingSession();
   }
 
   void getAllStudents() async {
@@ -103,7 +157,11 @@ class _ClassDetailsPageState extends State<ClassDetailsPage> {
               sessions: widget.sessions,
             ),
             const SizedBox(height: 12),
-            _QuickActionsSection(classID: widget.classID),
+            _QuickActionsSection(
+              classID: widget.classID,
+              activeSessionID: activeSessionID,
+              onRefreshSessionState: _refreshSessionState,
+            ),
             const SizedBox(height: 24),
             _FeatureListSection(classID: widget.classID, students: students),
           ],
@@ -255,7 +313,13 @@ class _ClassDetailsAppBar extends StatelessWidget
 
 class _QuickActionsSection extends StatelessWidget {
   final String classID;
-  const _QuickActionsSection({required this.classID});
+  final int activeSessionID;
+  final VoidCallback onRefreshSessionState;
+  const _QuickActionsSection({
+    required this.classID,
+    required this.activeSessionID,
+    required this.onRefreshSessionState,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +327,9 @@ class _QuickActionsSection extends StatelessWidget {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Start Session?'),
+          title: activeSessionID == 0
+              ? const Text('Start Session?')
+              : const Text('Resume Session?'),
           content: const Text('Are you sure you want to Start Session?'),
           actions: [
             TextButton(
@@ -279,30 +345,45 @@ class _QuickActionsSection extends StatelessWidget {
       );
 
       if (confirmed == true) {
-        debugPrint('Start Session confirmed for class: $classID');
+        debugPrint(
+          '${activeSessionID == 0 ? 'Start' : 'Resume'} Session confirmed for class: $classID',
+        );
         if (context.mounted) {
-          final sessionID = await AppDatabase.instance.insertSession(
-            SessionsCompanion(
-              subjectId: drift.Value(int.parse(classID)),
-              startTime: drift.Value(DateTime.now()),
-              endTime: drift.Value(DateTime.now()),
-              status: drift.Value('ongoing'),
-              synced: drift.Value(false),
-              createdAt: drift.Value(DateTime.now()),
-            ),
-          );
+          String sessionID;
 
-          debugPrint('Session ID: $sessionID');
+          if (activeSessionID == 0) {
+            // Create new session
+            final newSessionID = await AppDatabase.instance.insertSession(
+              SessionsCompanion(
+                subjectId: drift.Value(int.parse(classID)),
+                startTime: drift.Value(DateTime.now()),
+                endTime: drift.Value(DateTime.now()),
+                status: drift.Value('ongoing'),
+                synced: drift.Value(false),
+                createdAt: drift.Value(DateTime.now()),
+              ),
+            );
+            sessionID = newSessionID.toString();
+            debugPrint('New Session ID: $sessionID');
+          } else {
+            // Use existing session
+            sessionID = activeSessionID.toString();
+            debugPrint('Resuming Session ID: $sessionID');
+          }
 
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AttendancePage(
-                subjectId: classID,
-                sessionID: sessionID.toString(),
-              ),
+              builder: (context) =>
+                  AttendancePage(subjectId: classID, sessionID: sessionID),
             ),
-          );
+          ).then((result) {
+            // Refresh session state when returning from attendance page
+            if (result == 'session_ended') {
+              debugPrint('Session was ended, refreshing state...');
+            }
+            onRefreshSessionState();
+          });
         }
       }
     }
@@ -322,7 +403,9 @@ class _QuickActionsSection extends StatelessWidget {
               Expanded(
                 child: _QuickActionButton(
                   icon: Icons.grid_view,
-                  label: 'Start Session',
+                  label: activeSessionID == 0
+                      ? 'Start Session'
+                      : 'Resume Session',
                   isPrimary: true,
                   onTap: () => confirmStartSession(context),
                 ),

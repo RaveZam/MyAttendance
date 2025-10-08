@@ -30,6 +30,7 @@ class _AttendancePageState extends State<AttendancePage> {
       GlobalKey<TeacherQrReaderState>();
 
   List<AttendanceData> _attendance = [];
+  bool _isResumingSession = false;
 
   @override
   void initState() {
@@ -38,7 +39,17 @@ class _AttendancePageState extends State<AttendancePage> {
     getSessionDetails();
     _loadStudents();
     _loadAttendance();
-    // AppDatabase.instance.clearAttendanceSession();
+    _checkIfResumingSession();
+  }
+
+  void _checkIfResumingSession() async {
+    // Check if there are existing attendance records for this session
+    final existingAttendance = await AppDatabase.instance
+        .getAttendanceBySessionID(int.parse(widget.sessionID));
+
+    setState(() {
+      _isResumingSession = existingAttendance.isNotEmpty;
+    });
   }
 
   void _loadAttendance() async {
@@ -124,6 +135,55 @@ class _AttendancePageState extends State<AttendancePage> {
       _selectedMethod = '';
       _selectedStudent = null;
     });
+  }
+
+  void finishSession() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End Session?'),
+        content: Text(
+          'Are you sure you want to end this session?\n\n'
+          'This will mark the session as completed and you won\'t be able to add more attendance records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('End Session'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await AppDatabase.instance.finishSession(int.parse(widget.sessionID));
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session ended successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, 'session_ended');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to end session: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   // List<AttendanceData> _attendanceList = [];
@@ -236,6 +296,27 @@ class _AttendancePageState extends State<AttendancePage> {
                         fontSize: 13,
                       ),
                     ),
+                    if (_isResumingSession) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'RESUMED SESSION',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -537,7 +618,9 @@ class _AttendancePageState extends State<AttendancePage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      finishSession();
+                    },
                     child: Text(
                       'End Session',
                       style: TextStyle(
