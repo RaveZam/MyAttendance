@@ -4,6 +4,7 @@ import 'package:myattendance/features/Teacher/features/students_list/pages/stude
 import 'package:myattendance/features/Teacher/features/class_details/widgets/class_details_info_card.dart';
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/features/Teacher/features/attendance/pages/attendance_page.dart';
+import 'package:myattendance/features/Teacher/features/session/pages/session_page.dart';
 import 'package:drift/drift.dart' as drift;
 
 class ClassDetailsPage extends StatefulWidget {
@@ -529,7 +530,14 @@ class _FeatureListSection extends StatelessWidget {
             title: 'Class Sessions',
             description: 'View all session records',
             trailing: '32',
-            onTap: () => debugPrint('Class Sessions'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SessionPage(subjectId: classID),
+                ),
+              );
+            },
           ),
           const _Divider(),
           _FeatureListItem(

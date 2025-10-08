@@ -123,6 +123,13 @@ class AppDatabase extends _$AppDatabase {
     return (select(sessions)..where((tbl) => tbl.id.equals(sessionId))).get();
   }
 
+  /// Returns all sessions for a given subject id.
+  Future<List<Session>> getSessionsBySubjectId(int subjectId) {
+    return (select(
+      sessions,
+    )..where((tbl) => tbl.subjectId.equals(subjectId))).get();
+  }
+
   Future<List<AttendanceData>> getAttendanceBySessionID(int sessionID) {
     return (select(
       attendance,

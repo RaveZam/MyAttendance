@@ -583,7 +583,6 @@ class _AttendancePageState extends State<AttendancePage> {
               ),
               const SizedBox(height: 18),
 
-              // Recent Check-ins header (we'll not include the students list per request)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

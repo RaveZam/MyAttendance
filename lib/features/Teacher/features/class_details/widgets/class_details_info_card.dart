@@ -189,11 +189,9 @@ class ClassDetailsInfoCard extends StatelessWidget {
               }
             }
 
-            // Format times to 12-hour format
             String formattedStartTime = _formatTo12Hour(startTime);
             String formattedEndTime = _formatTo12Hour(endTime);
 
-            // Build the display string with day
             String displayText = '';
             if (day.isNotEmpty && day != 'Unknown') {
               displayText = '$day $formattedStartTime - $formattedEndTime';
