@@ -48,6 +48,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
   List<Map<String, dynamic>> students = [];
 
   int activeSessionID = 0;
+  int _sessionsCount = 0;
 
   @override
   void initState() {
@@ -105,6 +106,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
 
   Future<void> _refreshSessionState() async {
     await _checkForOngoingSession();
+    await _loadSessionsCount();
   }
 
   void getAllStudents() async {
@@ -115,6 +117,26 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     setState(() {
       students = studentsData.map((student) => student.toJson()).toList();
     });
+  }
+
+  Future<void> _loadSessionsCount() async {
+    try {
+      final sessions = await AppDatabase.instance.getSessionsBySubjectId(
+        int.parse(widget.classID),
+      );
+      if (mounted) {
+        setState(() {
+          _sessionsCount = sessions.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load sessions count: $e');
+      if (mounted) {
+        setState(() {
+          _sessionsCount = 0;
+        });
+      }
+    }
   }
 
   @override
@@ -164,7 +186,11 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
               onRefreshSessionState: _refreshSessionState,
             ),
             const SizedBox(height: 24),
-            _FeatureListSection(classID: widget.classID, students: students),
+            _FeatureListSection(
+              classID: widget.classID,
+              students: students,
+              sessionsCount: _sessionsCount,
+            ),
           ],
         ),
       ),
@@ -482,7 +508,12 @@ class _QuickActionButton extends StatelessWidget {
 class _FeatureListSection extends StatelessWidget {
   final String classID;
   final List<Map<String, dynamic>> students;
-  const _FeatureListSection({required this.classID, required this.students});
+  final int sessionsCount;
+  const _FeatureListSection({
+    required this.classID,
+    required this.students,
+    required this.sessionsCount,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +560,7 @@ class _FeatureListSection extends StatelessWidget {
             icon: Icons.calendar_month,
             title: 'Class Sessions',
             description: 'View all session records',
-            trailing: '32',
+            trailing: sessionsCount.toString(),
             onTap: () {
               Navigator.push(
                 context,
@@ -540,14 +571,14 @@ class _FeatureListSection extends StatelessWidget {
             },
           ),
           const _Divider(),
-          _FeatureListItem(
-            icon: Icons.schedule,
-            title: 'Schedule',
-            description: 'Manage class timetable',
-            trailing: '',
-            onTap: () => debugPrint('Schedule'),
-          ),
-          const _Divider(),
+          // _FeatureListItem(
+          //   icon: Icons.schedule,
+          //   title: 'Schedule',
+          //   description: 'Manage class timetable',
+          //   trailing: '',
+          //   onTap: () => debugPrint('Schedule'),
+          // ),
+          // const _Divider(),
           _FeatureListItem(
             icon: Icons.assignment,
             title: 'Reports',
