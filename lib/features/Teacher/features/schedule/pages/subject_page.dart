@@ -37,18 +37,24 @@ class _SubjectPageState extends State<SubjectPage> {
         (subject) => subject['id'] == schedule['subjectId'],
         orElse: () => {},
       );
+      if (matchingSubject.isEmpty) {
+        // If a schedule exists without a matching subject (out of sync), skip
+        continue;
+      }
 
       final int subjectTermId =
           matchingSubject['termId'] ?? matchingSubject['term_id'] ?? 0;
       final term = subjectTermId != 0 ? await getTermById(subjectTermId) : null;
 
-      if (term == null) return;
+      if (term == null) {
+        // No term yet; still include the item without termData to avoid dropping
+      }
       final termData = {
-        'id': term.id,
-        'term': term.term,
-        'startYear': term.startYear,
-        'endYear': term.endYear,
-        'synced': term.synced,
+        if (term != null) 'id': term.id,
+        if (term != null) 'term': term.term,
+        if (term != null) 'startYear': term.startYear,
+        if (term != null) 'endYear': term.endYear,
+        if (term != null) 'synced': term.synced,
       };
 
       var combined = {
@@ -58,10 +64,9 @@ class _SubjectPageState extends State<SubjectPage> {
       };
       combined.remove('subjectId');
       // termId removed from schedule since term is now on subject
-      setState(() {
-        _finalData.add(combined);
-      });
+      _finalData.add(combined);
     }
+    setState(() {});
   }
 
   Future<void> loadSubjects() async {
@@ -69,9 +74,8 @@ class _SubjectPageState extends State<SubjectPage> {
     setState(() {
       _subjectsData = subjects.map((e) => e.toJson()).toList();
     });
-
-    if (_subjectsData.isNotEmpty) {
-      combineData();
+    if (_subjectsData.isNotEmpty && _scheduleData.isNotEmpty) {
+      await combineData();
     }
   }
 
@@ -80,6 +84,9 @@ class _SubjectPageState extends State<SubjectPage> {
     setState(() {
       _scheduleData = schedules.map((e) => e.toJson()).toList();
     });
+    if (_scheduleData.isNotEmpty && _subjectsData.isNotEmpty) {
+      await combineData();
+    }
   }
 
   void _navigateToAddSubject() async {

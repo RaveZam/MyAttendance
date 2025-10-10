@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
+import 'package:myattendance/features/Teacher/features/schedule/widgets/display_current_class.dart';
 import 'package:myattendance/features/Teacher/features/schedule/widgets/display_next_class.dart';
 import 'package:myattendance/features/Teacher/widgets/overview_section.dart';
 
@@ -13,7 +14,7 @@ class TeacherHomePage extends StatefulWidget {
 class _TeacherHomePageState extends State<TeacherHomePage> {
   @override
   void initState() {
-    // DisplayCurrentClass();
+    DisplayCurrentClass();
     super.initState();
   }
 
@@ -36,7 +37,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             child: Column(
               children: [
                 OverviewSection(),
-
+                DisplayCurrentClass(),
                 DisplayNextClass(),
 
                 // Container(
