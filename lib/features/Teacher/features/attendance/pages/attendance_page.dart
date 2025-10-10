@@ -392,6 +392,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       ),
                       const SizedBox(height: 16),
                       TeacherQrReader(
+                        students: _students,
                         attendanceList: _attendance,
                         loadAttendance: _loadAttendance,
                         key: _qrReaderKey,

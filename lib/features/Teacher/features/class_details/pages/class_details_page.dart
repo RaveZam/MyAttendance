@@ -91,8 +91,8 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     final session = await AppDatabase.instance.checkForOngoingSession(
       int.parse(widget.classID),
     );
-    debugPrint("Ongoing Found: ${session.first.id}");
     if (session.isNotEmpty) {
+      debugPrint("Ongoing Found: ${session.first.id}");
       setState(() {
         activeSessionID = int.parse(session.first.id.toString());
       });

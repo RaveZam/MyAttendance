@@ -9,10 +9,12 @@ class TeacherQrReader extends StatefulWidget {
   final String sessionID;
   final List<AttendanceData> attendanceList;
   final Function() loadAttendance;
+  final List<Student> students;
 
   const TeacherQrReader({
     super.key,
     this.onQRCodeDetected,
+    required this.students,
     required this.sessionID,
     required this.attendanceList,
     required this.loadAttendance,
@@ -68,8 +70,22 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
                   final existingAttendance = widget.attendanceList.any(
                     (att) => att.studentId == data['student_id'],
                   );
+                  final existingStudent = widget.students.any(
+                    (student) => student.studentId == data['student_id'],
+                  );
 
                   if (existingAttendance) return;
+
+                  if (!existingStudent) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Student Not Registered'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(milliseconds: 500),
+                      ),
+                    );
+                    return;
+                  }
 
                   final attendance = await AppDatabase.instance
                       .insertAttendance(
