@@ -5,12 +5,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final IconData icon;
   final VoidCallback? onMenuPressed;
   final bool showMenuButton;
+  final Widget? trailing;
   const CustomAppBar({
     super.key,
     required this.title,
     required this.icon,
     this.onMenuPressed,
     this.showMenuButton = false,
+    this.trailing,
   });
 
   @override
@@ -38,15 +40,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       centerTitle: false,
-      actions: showMenuButton
-          ? [
-              IconButton(
-                onPressed: onMenuPressed,
-                icon: const Icon(Icons.more_vert),
-                tooltip: 'More options',
-              ),
-            ]
-          : null,
+      actions: [
+        if (trailing != null)
+          Padding(padding: const EdgeInsets.only(right: 8), child: trailing!),
+        if (showMenuButton)
+          IconButton(
+            onPressed: onMenuPressed,
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'More options',
+          ),
+      ],
     );
   }
 

@@ -14,6 +14,10 @@ class SubjectPage extends StatefulWidget {
 class _SubjectPageState extends State<SubjectPage> {
   List<Map<String, dynamic>> _scheduleData = [];
   List<Map<String, dynamic>> _subjectsData = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  List<Term> _terms = [];
+  int? _selectedTermId; // null means show all
 
   final db = AppDatabase.instance;
   @override
@@ -22,12 +26,36 @@ class _SubjectPageState extends State<SubjectPage> {
     loadSchedule();
     loadSubjects();
     db.ensureTermsExist(db);
+    loadTerms();
+  }
+
+  Future<void> loadTerms() async {
+    final terms = await db.getTerms();
+    setState(() {
+      _terms = terms;
+      // if no selection, try to pick the first term
+      if (_terms.isNotEmpty && _selectedTermId == null) {
+        _selectedTermId = null; // keep null as 'All' by default
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   final List<Map<String, dynamic>> _finalData = [];
 
   Future<Term?> getTermById(int id) async {
     return await db.getTermById(id);
+  }
+
+  void onClearFilter() {
+    setState(() {
+      _selectedTermId = null;
+    });
   }
 
   Future<void> combineData() async {
@@ -38,7 +66,6 @@ class _SubjectPageState extends State<SubjectPage> {
         orElse: () => {},
       );
       if (matchingSubject.isEmpty) {
-        // If a schedule exists without a matching subject (out of sync), skip
         continue;
       }
 
@@ -46,9 +73,7 @@ class _SubjectPageState extends State<SubjectPage> {
           matchingSubject['termId'] ?? matchingSubject['term_id'] ?? 0;
       final term = subjectTermId != 0 ? await getTermById(subjectTermId) : null;
 
-      if (term == null) {
-        // No term yet; still include the item without termData to avoid dropping
-      }
+      if (term == null) {}
       final termData = {
         if (term != null) 'id': term.id,
         if (term != null) 'term': term.term,
@@ -117,11 +142,47 @@ class _SubjectPageState extends State<SubjectPage> {
       appBar: CustomAppBar(
         title: 'Subjects',
         icon: Icons.calendar_month_rounded,
+        trailing: (_terms.isEmpty)
+            ? null
+            : PopupMenuButton<int?>(
+                icon: const Icon(Icons.filter_list),
+                color: Colors.white,
+                onSelected: (value) => setState(() => _selectedTermId = value),
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<int?>>[];
+                  items.add(
+                    const PopupMenuItem<int?>(
+                      value: null,
+                      child: Text('All Terms'),
+                    ),
+                  );
+                  for (final t in _terms) {
+                    items.add(
+                      PopupMenuItem<int?>(
+                        value: t.id,
+                        child: Text('${t.term} ${t.startYear}-${t.endYear}'),
+                      ),
+                    );
+                  }
+                  return items;
+                },
+              ),
       ),
       backgroundColor: Colors.grey[50],
       body: _scheduleData.isEmpty
           ? _buildEmptyState()
-          : _buildSchedule(_finalData, context, refreshData),
+          : _buildSchedule(
+              _finalData,
+              context,
+              refreshData,
+              _searchQuery,
+              _searchController,
+              (q) => setState(() => _searchQuery = q),
+              _terms,
+              _selectedTermId,
+              (v) => setState(() => _selectedTermId = v),
+              onClearFilter,
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddSubject,
         child: const Icon(Icons.add),
@@ -209,14 +270,53 @@ Widget _buildSchedule(
   List<Map<String, dynamic>> finalData,
   BuildContext context,
   VoidCallback refreshData,
+  String searchQuery,
+  TextEditingController searchController,
+  ValueChanged<String> onSearch,
+  List<Term> terms,
+  int? selectedTermId,
+  ValueChanged<int?> onTermChanged,
+  VoidCallback onClearFilter,
 ) {
   return SingleChildScrollView(
     child: Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Search subjects',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: (searchQuery.isNotEmpty || selectedTermId != null)
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        searchController.clear();
+                        onSearch('');
+                        onClearFilter();
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: onSearch,
+          ),
+        ),
         // Class List
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: ClassList(finalData: finalData, reloadStates: refreshData),
+          child: ClassList(
+            finalData: finalData,
+            reloadStates: refreshData,
+            searchQuery: searchQuery,
+            selectedTermId: selectedTermId,
+          ),
         ),
       ],
     ),
