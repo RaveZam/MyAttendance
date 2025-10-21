@@ -153,6 +153,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             'endTime': _schedules[i]['endTime'],
             'room': _schedules[i]['room'] ?? '',
             'synced': false,
+            'createdAt': DateTime.now(),
+            'lastModified': DateTime.now(),
           });
         }
       }
@@ -186,6 +188,9 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                   schedule['startTime'],
                   schedule['endTime'],
                   schedule['room'],
+                  schedule['synced'],
+                  schedule['lastModified'],
+                  schedule['createdAt'],
                 );
               } else {
                 // Add new schedule
@@ -197,6 +202,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                     endTime: drift.Value(schedule['endTime']),
                     room: drift.Value(schedule['room']),
                     synced: drift.Value(false),
+                    lastModified: drift.Value(DateTime.now()),
+                    createdAt: drift.Value(DateTime.now()),
                   ),
                 );
               }
@@ -229,6 +236,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             section: drift.Value(subject['section']),
             profId: drift.Value(profId.toString()),
             synced: drift.Value(false),
+            createdAt: drift.Value(DateTime.now()),
+            lastModified: drift.Value(DateTime.now()),
           );
 
           final subjectId = await db.insertSubject(subjectCompanion);
@@ -244,6 +253,8 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
                 endTime: drift.Value(schedule['endTime']),
                 room: drift.Value(schedule['room']),
                 synced: drift.Value(false),
+                createdAt: drift.Value(DateTime.now()),
+                lastModified: drift.Value(DateTime.now()),
               );
             }).toList();
 

@@ -20,6 +20,8 @@ class Attendance extends Table {
   TextColumn get status => text()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 class Sessions extends Table {
@@ -32,6 +34,8 @@ class Sessions extends Table {
   TextColumn get status => text()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 class Subjects extends Table {
@@ -46,6 +50,8 @@ class Subjects extends Table {
   )();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 class Schedules extends Table {
@@ -59,6 +65,8 @@ class Schedules extends Table {
   TextColumn get room => text().nullable()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 class Students extends Table {
@@ -68,6 +76,8 @@ class Students extends Table {
   TextColumn get studentId => text()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 class SubjectStudents extends Table {
@@ -83,6 +93,8 @@ class SubjectStudents extends Table {
 
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastModified =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 @DriftDatabase(
@@ -121,6 +133,12 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Session>> getSessionByID(int sessionId) {
     return (select(sessions)..where((tbl) => tbl.id.equals(sessionId))).get();
+  }
+
+  Future<Session?> getSessionById(int sessionId) async {
+    return await (select(
+      sessions,
+    )..where((tbl) => tbl.id.equals(sessionId))).getSingleOrNull();
   }
 
   /// Returns all sessions for a given subject id.
@@ -196,6 +214,7 @@ class AppDatabase extends _$AppDatabase {
         firstName: Value(firstName),
         lastName: Value(lastName),
         studentId: Value(studentId),
+        lastModified: Value(DateTime.now()),
       ),
     );
   }
@@ -232,6 +251,7 @@ class AppDatabase extends _$AppDatabase {
         yearLevel: Value(yearLevel),
         section: Value(section),
         termId: Value(termId),
+        lastModified: Value(DateTime.now()),
       ),
     );
   }
@@ -253,7 +273,11 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> finishSession(int sessionID) async {
     await (update(sessions)..where((tbl) => tbl.id.equals(sessionID))).write(
-      SessionsCompanion(status: Value('ended'), endTime: Value(DateTime.now())),
+      SessionsCompanion(
+        status: Value('ended'),
+        endTime: Value(DateTime.now()),
+        lastModified: Value(DateTime.now()),
+      ),
     );
   }
 
@@ -373,6 +397,9 @@ class AppDatabase extends _$AppDatabase {
     String startTime,
     String endTime,
     String room,
+    bool synced,
+    DateTime lastModified,
+    DateTime createdAt,
   ) async {
     await (update(schedules)..where((tbl) => tbl.id.equals(scheduleId))).write(
       SchedulesCompanion(
@@ -380,6 +407,9 @@ class AppDatabase extends _$AppDatabase {
         startTime: Value(startTime),
         endTime: Value(endTime),
         room: Value(room),
+        synced: Value(synced),
+        lastModified: Value(lastModified),
+        createdAt: Value(createdAt),
       ),
     );
   }

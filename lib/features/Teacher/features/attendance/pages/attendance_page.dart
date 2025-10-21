@@ -53,12 +53,33 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   void _loadAttendance() async {
+    debugPrint(
+      '🔄 [ATTENDANCE LOADING] Loading attendance for session ID: ${widget.sessionID}',
+    );
     final attendance = await AppDatabase.instance.getAttendanceBySessionID(
       int.parse(widget.sessionID),
     );
+    debugPrint(
+      '📋 [ATTENDANCE RECORDS] Found ${attendance.length} attendance records',
+    );
+
+    // Log each attendance record
+    for (var record in attendance) {
+      debugPrint(
+        '   📝 Attendance ${record.id}: Student ${record.studentId} - ${record.status}',
+      );
+      debugPrint('      📅 Created: ${record.createdAt.toIso8601String()}');
+      if (record.lastModified != null) {
+        debugPrint(
+          '      🔄 Last Modified: ${record.lastModified!.toIso8601String()}',
+        );
+      }
+    }
+
     setState(() {
       _attendance = attendance;
     });
+    debugPrint('✅ [ATTENDANCE LOADING] Attendance data loaded successfully');
   }
 
   void getSessionDetails() async {

@@ -32,11 +32,16 @@ class _SessionPageState extends State<SessionPage> {
   }
 
   Future<void> _loadSessions() async {
+    debugPrint(
+      '🔄 [SESSION LOADING] Loading sessions for subject ID: ${widget.subjectId}',
+    );
     setState(() => _loading = true);
     try {
       final sessions = await db.getSessionsBySubjectId(
         int.parse(widget.subjectId),
       );
+      debugPrint('📊 [SESSION DATA] Loaded ${sessions.length} sessions');
+
       Subject? subject;
       Term? term;
       try {
@@ -45,9 +50,23 @@ class _SessionPageState extends State<SessionPage> {
         );
         if (subjectList.isNotEmpty) {
           subject = subjectList.first;
+          debugPrint(
+            '🏫 [SUBJECT DATA] Subject: ${subject.subjectName} (${subject.subjectCode})',
+          );
           term = await db.getTermById(subject.termId);
+          debugPrint('📚 [TERM DATA] Term: ${term?.term} ${term?.startYear}');
         }
       } catch (_) {}
+
+      // Log each session's details
+      for (var session in sessions) {
+        debugPrint(
+          '   📅 Session ${session.id}: ${session.status} from ${session.startTime.toIso8601String()}',
+        );
+        if (session.endTime != null) {
+          debugPrint('      End: ${session.endTime!.toIso8601String()}');
+        }
+      }
 
       setState(() {
         _sessions = sessions;
@@ -55,8 +74,9 @@ class _SessionPageState extends State<SessionPage> {
         _term = term;
       });
       _applyFilters();
+      debugPrint('✅ [SESSION LOADING] Sessions loaded successfully');
     } catch (e) {
-      debugPrint('Failed to load sessions: $e');
+      debugPrint('❌ [SESSION LOADING] Failed to load sessions: $e');
     } finally {
       setState(() => _loading = false);
     }
@@ -187,13 +207,40 @@ class _SessionPageState extends State<SessionPage> {
 
                             return InkWell(
                               onTap: () {
+                                debugPrint(
+                                  '🎯 [SESSION INTERACTION] Session tapped:',
+                                );
+                                debugPrint(
+                                  '   📊 Session Data: id=${s.id}, status=${s.status}',
+                                );
+                                debugPrint(
+                                  '   📅 Start Time: ${s.startTime.toIso8601String()}',
+                                );
+                                debugPrint(
+                                  '   📅 End Time: ${s.endTime?.toIso8601String() ?? 'null'}',
+                                );
+                                debugPrint('   👥 Attendance Count: $count');
+                                debugPrint(
+                                  '   🏫 Subject: ${_subject?.subjectName ?? 'Unknown'}',
+                                );
+                                debugPrint(
+                                  '   📚 Term: ${_term?.term ?? 'Unknown'} ${_term?.startYear ?? ''}',
+                                );
+
                                 if (_bulkMode) {
+                                  debugPrint(
+                                    '📦 [BULK MODE] Toggling selection for session ${s.id}',
+                                  );
                                   _toggleSelect(
                                     s.id,
                                     !_selectedIds.contains(s.id),
                                   );
                                   return;
                                 }
+
+                                debugPrint(
+                                  '🔍 [SESSION NAVIGATION] Navigating to attendance page for session ${s.id}',
+                                );
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

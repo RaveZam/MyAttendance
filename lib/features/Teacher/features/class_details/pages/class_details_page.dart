@@ -54,10 +54,9 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    debugPrint("Class Details Page: ${widget.classID.toString()}");
+
     getAllStudents();
     _checkForOngoingSession();
-    // AppDatabase.instance.clearAttendanceSession();
   }
 
   @override

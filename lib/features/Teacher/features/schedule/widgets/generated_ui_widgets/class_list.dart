@@ -28,7 +28,6 @@ class ClassList extends StatelessWidget {
     debugPrint("Schedule Data: ${finalData.toString()}");
 
     for (final data in finalData) {
-      // If a term filter is selected, skip items that don't match
       final itemTermId = data['termData']?['id'];
       if (selectedTermId != null) {
         if (itemTermId == null) continue;
@@ -48,7 +47,6 @@ class ClassList extends StatelessWidget {
       return [const EmptyClassesState()];
     }
 
-    // Group entries by semester header string
     final Map<String, List<Map<String, dynamic>>> bySemester = {};
     for (final entry in classesBySubject.entries) {
       for (final item in entry.value) {
@@ -59,7 +57,7 @@ class ClassList extends StatelessWidget {
             ? '$term $startYear-$endYear'
             : term;
         if (!bySemester.containsKey(header)) bySemester[header] = [];
-        // add the single item to the semester group
+
         bySemester[header]!.add(item);
       }
     }
@@ -67,11 +65,9 @@ class ClassList extends StatelessWidget {
     final widgets = <Widget>[];
     var cardCount = 0;
 
-    // iterate headers in insertion order
     for (final header in bySemester.keys) {
       final items = bySemester[header]!;
 
-      // build unique subject list within this semester (apply search filter first)
       final Map<String, List<Map<String, dynamic>>> subjectsMap = {};
       for (final data in items) {
         final subject = data['subjectData']?['subjectName']?.toString() ?? '';

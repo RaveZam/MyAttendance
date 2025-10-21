@@ -16,6 +16,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
   String _selectedLanguage = 'English';
+  bool _isSyncing = false;
+  String _lastSyncTime = 'Never';
 
   @override
   void initState() {
@@ -29,6 +31,51 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  Future<void> _handleSync() async {
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      // Simulate sync process - in a real app, this would sync with your backend
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Update last sync time
+      final now = DateTime.now();
+      final formattedTime =
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+      setState(() {
+        _lastSyncTime = 'Today at $formattedTime';
+        _isSyncing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data synced successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isSyncing = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleSignOut() async {
@@ -211,7 +258,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
         const Divider(),
 
-        // Dark Mode Setting
         _buildSettingTile(
           icon: Icons.dark_mode_outlined,
           title: 'Dark Mode',
@@ -228,7 +274,22 @@ class _SettingsPageState extends State<SettingsPage> {
 
         const Divider(),
 
-        // Language Setting
+        // Sync Setting
+        _buildSettingTile(
+          icon: Icons.sync_outlined,
+          title: 'Sync Data',
+          subtitle: _isSyncing ? 'Syncing...' : 'Last sync: $_lastSyncTime',
+          trailing: _isSyncing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sync),
+          onTap: _isSyncing ? null : _handleSync,
+        ),
+        const Divider(),
+
         _buildSettingTile(
           icon: Icons.language_outlined,
           title: 'Language',

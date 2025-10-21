@@ -3,7 +3,7 @@ import 'package:myattendance/features/Teacher/features/class_details/pages/class
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/core/database/app_database.dart';
 
-class ClassCard extends StatelessWidget {
+class ClassCard extends StatefulWidget {
   final String subject;
   final String courseCode;
   final String room;
@@ -40,6 +40,64 @@ class ClassCard extends StatelessWidget {
     this.subjectData,
     this.scheduleData,
   });
+  @override
+  State<ClassCard> createState() => _ClassCardState();
+}
+
+class _ClassCardState extends State<ClassCard> {
+  int _studentCount = 0;
+  int _sessionCount = 0;
+  double? _avgAttendancePercent;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final db = AppDatabase.instance;
+    final sid = widget.subjectId;
+    if (sid == null) return;
+
+    try {
+      final students = await db.getStudentsInSubject(sid);
+      final sessions = await db.getSessionsBySubjectId(sid);
+
+      // Compute average attendance by session: for each session,
+      // percent = present_count / enrolled_students. Then average those percents.
+      final enrolled = students.length;
+      double sumSessionPercents = 0.0;
+      int countedSessions = 0;
+
+      if (enrolled > 0) {
+        for (final s in sessions) {
+          final attendances = await db.getAttendanceBySessionID(s.id);
+          int presentThisSession = 0;
+          for (final a in attendances) {
+            final status = a.status.toString().toLowerCase();
+            if (status == 'present' || status == 'presented' || status == 'p') {
+              presentThisSession += 1;
+            }
+          }
+          // session percent based on enrolled students
+          final sessionPercent = (presentThisSession / enrolled) * 100;
+          sumSessionPercents += sessionPercent;
+          countedSessions += 1;
+        }
+      }
+
+      setState(() {
+        _studentCount = students.length;
+        _sessionCount = sessions.length;
+        _avgAttendancePercent = countedSessions > 0
+            ? (sumSessionPercents / countedSessions)
+            : null;
+      });
+    } catch (e) {
+      debugPrint('Error loading class stats: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +107,19 @@ class ClassCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => ClassDetailsPage(
-              subject: subject,
-              classID: subjectId.toString(), // Use subjectId instead of classID
-              courseCode: courseCode,
-              sessions: sessions,
-              room: room,
-              startTime: startTime,
-              endTime: endTime,
+              subject: widget.subject,
+              classID: widget.subjectId
+                  .toString(), // Use subjectId instead of classID
+              courseCode: widget.courseCode,
+              sessions: widget.sessions,
+              room: widget.room,
+              startTime: widget.startTime,
+              endTime: widget.endTime,
               status: 'SCHEDULED',
-              semester: semester,
-              yearLevel: yearLevel,
-              section: section,
-              profId: profId,
+              semester: widget.semester,
+              yearLevel: widget.yearLevel,
+              section: widget.section,
+              profId: widget.profId,
             ),
           ),
         );
@@ -96,7 +155,7 @@ class ClassCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        _getSubjectIcon(subject),
+                        _getSubjectIcon(widget.subject),
                         color: Colors.white,
                         size: 24,
                       ),
@@ -108,7 +167,7 @@ class ClassCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            subject,
+                            widget.subject,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -117,7 +176,7 @@ class ClassCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            semester,
+                            widget.semester,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -144,7 +203,7 @@ class ClassCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         // Next Session Time
                         Text(
-                          'Next: ${_formatTo12Hour(startTime)}', // TODO: Replace with actual next session time calculation
+                          'Next: ${_formatTo12Hour(widget.startTime)}', // TODO: Replace with actual next session time calculation
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[700],
@@ -166,15 +225,17 @@ class ClassCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '124 Students', // TODO: Replace with actual student count from database
+                        '$_studentCount Students',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                       Text(
-                        '32 Sessions', // TODO: Replace with actual session count from database
+                        '$_sessionCount Sessions',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                       Text(
-                        '87% Avg', // TODO: Replace with actual attendance rate from database
+                        _avgAttendancePercent != null
+                            ? '${_avgAttendancePercent!.toStringAsFixed(0)}% Avg'
+                            : 'N/A',
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
@@ -241,23 +302,23 @@ class ClassCard extends StatelessWidget {
                   );
 
                   if (selection == 'edit') {
-                    if (context.mounted && subjectData != null) {
+                    if (context.mounted && widget.subjectData != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AddSubjectPage(
-                            existingSubject: subjectData,
-                            existingSchedules: scheduleData,
+                            existingSubject: widget.subjectData,
+                            existingSchedules: widget.scheduleData,
                           ),
                         ),
                       ).then((result) {
                         if (result == true) {
-                          reloadStates();
+                          widget.reloadStates();
                         }
                       });
                     }
                   } else if (selection == 'delete') {
-                    debugPrint("Deleted subject $subjectId");
+                    debugPrint("Deleted subject ${widget.subjectId}");
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -278,10 +339,12 @@ class ClassCard extends StatelessWidget {
                       ),
                     );
 
-                    if (confirm == true && subjectId != null) {
+                    if (confirm == true && widget.subjectId != null) {
                       try {
-                        await AppDatabase.instance.deleteSubject(subjectId!);
-                        reloadStates();
+                        await AppDatabase.instance.deleteSubject(
+                          widget.subjectId!,
+                        );
+                        widget.reloadStates();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

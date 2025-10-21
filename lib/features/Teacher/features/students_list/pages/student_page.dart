@@ -400,6 +400,20 @@ class _StudentPageState extends State<StudentPage> {
                     databaseId: student['id'],
                   ),
                   onStudentUpdate: (updatedStudent) {
+                    debugPrint('🔄 [STUDENT UPDATE] Student data updated:');
+                    debugPrint(
+                      '   📝 Old Data: name=${student['firstName']} ${student['lastName']}, id=${student['studentId']}',
+                    );
+                    debugPrint(
+                      '   📝 New Data: name=${updatedStudent.name}, id=${updatedStudent.id}',
+                    );
+                    debugPrint(
+                      '   🆔 Database ID: ${updatedStudent.databaseId}',
+                    );
+                    debugPrint(
+                      '   ⏰ Update timestamp: ${DateTime.now().toIso8601String()}',
+                    );
+
                     setState(() {
                       // Find the original index in the main students list
                       final originalIndex = students.indexWhere(
@@ -417,6 +431,9 @@ class _StudentPageState extends State<StudentPage> {
                         };
                         // Refresh the filtered list
                         filterStudents(searchQuery);
+                        debugPrint(
+                          '✅ [STUDENT UPDATE] UI updated successfully',
+                        );
                       }
                     });
                   },
@@ -524,9 +541,26 @@ class _StudentCard extends StatelessWidget {
   });
 
   void _handleMenuAction(BuildContext context, String action) {
+    debugPrint(
+      '🎯 [STUDENT INTERACTION] Student tapped: ${student.name} (ID: ${student.id})',
+    );
+    debugPrint(
+      '   📊 Student Data: name=${student.name}, id=${student.id}, databaseId=${student.databaseId}',
+    );
+    debugPrint(
+      '   📈 Attendance Stats: present=${student.present}, absent=${student.absent}, late=${student.late}',
+    );
+    debugPrint('   ⚡ Action: $action');
+
     if (action == 'edit') {
+      debugPrint(
+        '✏️ [STUDENT EDIT] Opening edit dialog for student: ${student.name}',
+      );
       _editStudent(context);
     } else if (action == 'delete') {
+      debugPrint(
+        '🗑️ [STUDENT DELETE] Opening delete confirmation for student: ${student.name}',
+      );
       _deleteStudent(context);
     }
   }
