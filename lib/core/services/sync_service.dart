@@ -280,6 +280,13 @@ class SyncService {
     }
   }
 
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
   /// Get the latest last_modified timestamp from local database for a table
   Future<DateTime?> _getLocalLatestModified(String tableName) async {
     try {
@@ -476,40 +483,43 @@ class SyncService {
         }
       }
 
-      // Determine status
+      // Determine status based on conditions:
+      // 1. Local Newer: If local has unsynced records or newer timestamp
+      // 2. Server Newer: If server has newer timestamp
+      // 3. All Synced: Timestamps match (or close enough) and no unsynced records
+
       SyncStatus status;
       String message;
 
-      if (maxLocalModified == null && maxServerModified == null) {
-        status = SyncStatus.upToDate;
-        message = 'No data to sync';
-      } else if (maxLocalModified == null) {
-        status = SyncStatus.serverNewer;
-        message = 'Server has data, local is empty';
-      } else if (maxServerModified == null) {
-        status = SyncStatus.localNewer;
-        message = 'Local has data, server is empty';
-      } else {
-        final localHasUnsynced = totalUnsynced > 0;
-        final serverIsNewer = maxServerModified.isAfter(maxLocalModified);
-        final localIsNewer = maxLocalModified.isAfter(maxServerModified);
+      // If either is null, treat as "empty" for comparison logic
+      final localTime =
+          maxLocalModified ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final serverTime =
+          maxServerModified ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-        if (localHasUnsynced && serverIsNewer) {
-          status = SyncStatus.bothNewer;
-          message = 'Both local and server have newer changes';
-        } else if (localHasUnsynced) {
-          status = SyncStatus.localNewer;
-          message = 'Local has unsynced changes';
-        } else if (serverIsNewer) {
-          status = SyncStatus.serverNewer;
-          message = 'Server has newer changes';
-        } else if (localIsNewer) {
-          status = SyncStatus.localNewer;
-          message = 'Local has newer changes';
-        } else {
-          status = SyncStatus.upToDate;
-          message = 'Everything is up to date';
-        }
+      final localHasUnsynced = totalUnsynced > 0;
+      final serverIsNewer = serverTime.isAfter(localTime);
+      // Use a small tolerance for "equality" or strict > for newer
+      final localIsNewer = localTime.isAfter(serverTime);
+
+      if (localHasUnsynced) {
+        // Condition 1: Local has unsynced records
+        status = SyncStatus.localNewer;
+        message = 'Local changes found ($totalUnsynced records)';
+      } else if (serverIsNewer) {
+        // Condition 2: Server is newer
+        status = SyncStatus.serverNewer;
+        message = 'Server has newer updates';
+      } else if (localIsNewer) {
+        // Technically local is newer but no "unsynced" count from flags?
+        // This might happen if we updated a timestamp but didn't set synced=false (bug?)
+        // Or if we just created data. Let's assume we should upload if local is newer.
+        status = SyncStatus.localNewer;
+        message = 'Local version is newer';
+      } else {
+        // Condition 3: All Synced
+        status = SyncStatus.upToDate;
+        message = 'All Synced';
       }
 
       return SyncStatusResult(
@@ -588,6 +598,11 @@ class SyncService {
     debugPrint('⬇️ Loading data from Supabase for prof_id: $profId');
 
     try {
+      final Map<int, int> studentIdMap = {};
+      final Map<int, int> subjectIdMap = {};
+      final Set<int> profSubjectLocalIds = {};
+      final Set<int> sessionLocalIds = {};
+
       // 1️⃣ Load Terms
       final terms = await supabase.from('terms').select();
       for (final term in terms) {
@@ -618,33 +633,60 @@ class SyncService {
       // 2️⃣ Load Students
       final students = await supabase.from('students').select();
       for (final s in students) {
-        final studentRows = await (db.select(
-          db.students,
-        )..where((t) => t.studentId.equals(s['student_id']))).get();
-        final local = studentRows.isEmpty ? null : studentRows.first;
+        final remoteLocalId = s['local_id'] as int?;
+        Student? local;
+
+        if (remoteLocalId != null) {
+          local = await (db.select(
+            db.students,
+          )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
+        }
+
+        if (local == null) {
+          final studentRows = await (db.select(
+            db.students,
+          )..where((t) => t.studentId.equals(s['student_id']))).get();
+          local = studentRows.isEmpty ? null : studentRows.first;
+        }
+
+        final serverModified = _parseDateTime(s['last_modified']);
+        final serverCreated = _parseDateTime(s['created_at']);
 
         if (local == null) {
           await db
               .into(db.students)
               .insert(
-                StudentsCompanion.insert(
-                  firstName: s['first_name'],
-                  lastName: s['last_name'],
-                  studentId: s['student_id'],
-                  createdAt: Value(DateTime.parse(s['created_at'])),
-                  lastModified: Value(DateTime.parse(s['last_modified'])),
-                  synced: true,
+                StudentsCompanion(
+                  id: remoteLocalId != null
+                      ? Value(remoteLocalId)
+                      : const Value.absent(),
+                  firstName: Value(s['first_name'] ?? ''),
+                  lastName: Value(s['last_name'] ?? ''),
+                  studentId: Value(s['student_id'] ?? ''),
+                  createdAt: Value(serverCreated ?? DateTime.now()),
+                  lastModified: Value(serverModified ?? DateTime.now()),
+                  synced: const Value(true),
                 ),
+                mode: InsertMode.insertOrReplace,
               );
+
+          if (remoteLocalId != null) {
+            studentIdMap[remoteLocalId] = remoteLocalId;
+          }
         } else {
-          final serverModified = DateTime.parse(s['last_modified']);
-          if (serverModified.isAfter(local.lastModified)) {
+          final resolvedId = local.id;
+          if (remoteLocalId != null) {
+            studentIdMap[remoteLocalId] = resolvedId;
+          }
+
+          if (serverModified != null &&
+              serverModified.isAfter(local.lastModified)) {
             await (db.update(
               db.students,
-            )..where((t) => t.id.equals(local.id))).write(
+            )..where((t) => t.id.equals(resolvedId))).write(
               StudentsCompanion(
-                firstName: Value(s['first_name']),
-                lastName: Value(s['last_name']),
+                firstName: Value(s['first_name'] ?? local.firstName),
+                lastName: Value(s['last_name'] ?? local.lastName),
                 lastModified: Value(serverModified),
                 synced: const Value(true),
               ),
@@ -660,91 +702,122 @@ class SyncService {
           .eq('prof_id', profId);
 
       for (final s in subjects) {
-        final subjectRows = await (db.select(
-          db.subjects,
-        )..where((t) => t.subjectCode.equals(s['subject_code']))).get();
-        final local = subjectRows.isEmpty ? null : subjectRows.first;
+        final remoteLocalId = s['local_id'] as int?;
+        Subject? local;
+
+        if (remoteLocalId != null) {
+          local = await (db.select(
+            db.subjects,
+          )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
+        }
 
         if (local == null) {
-          // find termId locally using term_uuid
-          final remoteTermId = s['term_id'];
-          int? localTermId;
-          if (remoteTermId != null) {
-            try {
-              final termResp = await supabase
-                  .from('terms')
-                  .select()
-                  .eq('id', remoteTermId)
-                  .maybeSingle();
+          final subjectRows = await (db.select(
+            db.subjects,
+          )..where((t) => t.subjectCode.equals(s['subject_code']))).get();
+          local = subjectRows.isEmpty ? null : subjectRows.first;
+        }
 
-              if (termResp != null) {
-                final remoteTermName = termResp['term'];
-                final remoteStartYear = termResp['start_year'];
-                final remoteEndYear = termResp['end_year'];
+        // find termId locally using term_uuid
+        final remoteTermId = s['term_id'];
+        int? localTermId;
+        if (remoteTermId != null) {
+          try {
+            final termResp = await supabase
+                .from('terms')
+                .select()
+                .eq('id', remoteTermId)
+                .maybeSingle();
 
-                final matchingTermRows =
-                    await (db.select(db.terms)..where(
-                          (t) =>
-                              t.term.equals(remoteTermName) &
-                              t.startYear.equals(remoteStartYear) &
-                              t.endYear.equals(remoteEndYear),
-                        ))
-                        .get();
+            if (termResp != null) {
+              final remoteTermName = termResp['term'];
+              final remoteStartYear = termResp['start_year'];
+              final remoteEndYear = termResp['end_year'];
 
-                if (matchingTermRows.isNotEmpty) {
-                  localTermId = matchingTermRows.first.id;
-                } else {
-                  // Insert the term locally so we have a mapping
-                  final inserted = await db
-                      .into(db.terms)
-                      .insert(
-                        TermsCompanion.insert(
-                          term: remoteTermName,
-                          startYear: remoteStartYear,
-                          endYear: remoteEndYear,
-                          synced: true,
-                        ),
-                      );
-                  localTermId = inserted;
-                }
+              final matchingTermRows =
+                  await (db.select(db.terms)..where(
+                        (t) =>
+                            t.term.equals(remoteTermName) &
+                            t.startYear.equals(remoteStartYear) &
+                            t.endYear.equals(remoteEndYear),
+                      ))
+                      .get();
+
+              if (matchingTermRows.isNotEmpty) {
+                localTermId = matchingTermRows.first.id;
+              } else {
+                final inserted = await db
+                    .into(db.terms)
+                    .insert(
+                      TermsCompanion.insert(
+                        term: remoteTermName,
+                        startYear: remoteStartYear,
+                        endYear: remoteEndYear,
+                        synced: true,
+                      ),
+                    );
+                localTermId = inserted;
               }
-            } catch (e) {
-              debugPrint('Failed to resolve remote term $remoteTermId: $e');
             }
+          } catch (e) {
+            debugPrint('Failed to resolve remote term $remoteTermId: $e');
           }
+        }
 
-          if (localTermId == null) {
-            debugPrint(
-              '⚠️ Skipping subject ${s['subject_code']} — remote term missing or could not be resolved',
-            );
-            continue;
-          }
+        if (local == null && localTermId == null) {
+          debugPrint(
+            '⚠️ Skipping subject ${s['subject_code']} — remote term missing or could not be resolved',
+          );
+          continue;
+        }
 
+        final serverModified = _parseDateTime(s['last_modified']);
+        final serverCreated = _parseDateTime(s['created_at']);
+
+        if (local == null) {
           await db
               .into(db.subjects)
               .insert(
-                SubjectsCompanion.insert(
-                  subjectCode: s['subject_code'],
-                  subjectName: s['subject_name'],
-                  yearLevel: s['year_level'],
-                  section: s['section'],
-                  profId: s['prof_id'] ?? profId,
-                  termId: localTermId,
-                  createdAt: Value(DateTime.parse(s['created_at'])),
-                  lastModified: Value(DateTime.parse(s['last_modified'])),
-                  synced: true,
+                SubjectsCompanion(
+                  id: remoteLocalId != null
+                      ? Value(remoteLocalId)
+                      : const Value.absent(),
+                  subjectCode: Value(s['subject_code'] ?? ''),
+                  subjectName: Value(s['subject_name'] ?? ''),
+                  yearLevel: Value(s['year_level'] ?? ''),
+                  section: Value(s['section'] ?? ''),
+                  profId: Value(s['prof_id'] ?? profId),
+                  termId: Value(localTermId ?? 0),
+                  createdAt: Value(serverCreated ?? DateTime.now()),
+                  lastModified: Value(serverModified ?? DateTime.now()),
+                  synced: const Value(true),
                 ),
+                mode: InsertMode.insertOrReplace,
               );
+
+          final resolvedId = remoteLocalId ?? 0;
+          if (resolvedId != 0) {
+            subjectIdMap[resolvedId] = resolvedId;
+            profSubjectLocalIds.add(resolvedId);
+          }
         } else {
-          final serverModified = DateTime.parse(s['last_modified']);
-          if (serverModified.isAfter(local.lastModified)) {
+          final resolvedId = local.id;
+          if (remoteLocalId != null) {
+            subjectIdMap[remoteLocalId] = resolvedId;
+            profSubjectLocalIds.add(remoteLocalId);
+          } else {
+            profSubjectLocalIds.add(resolvedId);
+          }
+
+          if (serverModified != null &&
+              serverModified.isAfter(local.lastModified)) {
             await (db.update(
               db.subjects,
-            )..where((t) => t.id.equals(local.id))).write(
+            )..where((t) => t.id.equals(resolvedId))).write(
               SubjectsCompanion(
-                subjectName: Value(s['subject_name']),
-                yearLevel: Value(s['year_level']),
-                section: Value(s['section']),
+                subjectName: Value(s['subject_name'] ?? local.subjectName),
+                yearLevel: Value(s['year_level'] ?? local.yearLevel),
+                section: Value(s['section'] ?? local.section),
                 lastModified: Value(serverModified),
                 synced: const Value(true),
               ),
@@ -754,47 +827,228 @@ class SyncService {
       }
 
       final schedules = await supabase.from('schedules').select();
-
-      // Fetch current professor's subjects to know which schedules belong to them
-      final profSubjects = await supabase
-          .from('subjects')
-          .select()
-          .eq('prof_id', profId);
-      final Set<String> profSubjectCodes = profSubjects
-          .map<String>((e) => e['subject_code'] as String)
-          .toSet();
-
-      for (final s in schedules) {
-        final scheduleSubjectCode = s['subject_code'] as String?;
-        if (scheduleSubjectCode == null ||
-            !profSubjectCodes.contains(scheduleSubjectCode)) {
-          continue; // skip schedules that don't belong to this prof
+      for (final sched in schedules) {
+        final remoteSubjectLocalId = sched['local_subject_id'] as int?;
+        if (remoteSubjectLocalId == null) continue;
+        final mappedSubjectId = subjectIdMap[remoteSubjectLocalId];
+        if (mappedSubjectId == null &&
+            !profSubjectLocalIds.contains(remoteSubjectLocalId)) {
+          continue;
         }
+        final subjectIdValue = mappedSubjectId ?? remoteSubjectLocalId;
 
-        final scheduleRows =
-            await (db.select(db.schedules)..where(
-                  (t) =>
-                      t.day.equals(s['day']) &
-                      t.startTime.equals(s['start_time']),
-                ))
-                .get();
-        final local = scheduleRows.isEmpty ? null : scheduleRows.first;
+        final localId = sched['local_id'] as int?;
+        if (localId == null) continue;
 
-        if (local == null) {
+        final remoteLastModified = _parseDateTime(sched['last_modified']);
+        final remoteCreatedAt = _parseDateTime(sched['created_at']);
+
+        final localSchedule = await (db.select(
+          db.schedules,
+        )..where((t) => t.id.equals(localId))).getSingleOrNull();
+
+        if (localSchedule == null) {
           await db
               .into(db.schedules)
               .insert(
-                SchedulesCompanion.insert(
-                  subjectId: s['local_subject_id'] ?? 0,
-                  day: s['day'],
-                  startTime: s['start_time'],
-                  endTime: s['end_time'],
-                  room: Value(s['room']),
-                  createdAt: Value(DateTime.parse(s['created_at'])),
-                  lastModified: Value(DateTime.parse(s['last_modified'])),
-                  synced: true,
+                SchedulesCompanion(
+                  id: Value(localId),
+                  subjectId: Value(subjectIdValue),
+                  day: Value(sched['day'] ?? ''),
+                  startTime: Value(sched['start_time'] ?? ''),
+                  endTime: Value(sched['end_time'] ?? ''),
+                  room: sched['room'] != null
+                      ? Value(sched['room'])
+                      : const Value.absent(),
+                  createdAt: Value(remoteCreatedAt ?? DateTime.now()),
+                  lastModified: Value(remoteLastModified ?? DateTime.now()),
+                  synced: const Value(true),
                 ),
+                mode: InsertMode.insertOrReplace,
               );
+        } else if (remoteLastModified != null &&
+            remoteLastModified.isAfter(localSchedule.lastModified)) {
+          await (db.update(
+            db.schedules,
+          )..where((t) => t.id.equals(localId))).write(
+            SchedulesCompanion(
+              subjectId: Value(subjectIdValue),
+              day: Value(sched['day'] ?? localSchedule.day),
+              startTime: Value(sched['start_time'] ?? localSchedule.startTime),
+              endTime: Value(sched['end_time'] ?? localSchedule.endTime),
+              room: sched['room'] != null
+                  ? Value(sched['room'])
+                  : Value(localSchedule.room),
+              lastModified: Value(remoteLastModified),
+              synced: const Value(true),
+            ),
+          );
+        }
+      }
+
+      final sessions = await supabase.from('sessions').select();
+      for (final session in sessions) {
+        final remoteSubjectLocalId = session['local_subject_id'] as int?;
+        if (remoteSubjectLocalId == null) continue;
+        final mappedSubjectId = subjectIdMap[remoteSubjectLocalId];
+        if (mappedSubjectId == null &&
+            !profSubjectLocalIds.contains(remoteSubjectLocalId)) {
+          continue;
+        }
+        final subjectIdValue = mappedSubjectId ?? remoteSubjectLocalId;
+
+        final localId = session['local_id'] as int?;
+        if (localId == null) continue;
+        sessionLocalIds.add(localId);
+
+        final remoteLastModified = _parseDateTime(session['last_modified']);
+        final remoteCreatedAt = _parseDateTime(session['created_at']);
+        final remoteStart =
+            _parseDateTime(session['start_time']) ?? DateTime.now();
+        final remoteEnd = _parseDateTime(session['end_time']);
+        final status = session['status'] as String? ?? 'ongoing';
+
+        final localSession = await (db.select(
+          db.sessions,
+        )..where((t) => t.id.equals(localId))).getSingleOrNull();
+
+        if (localSession == null) {
+          await db
+              .into(db.sessions)
+              .insert(
+                SessionsCompanion(
+                  id: Value(localId),
+                  subjectId: Value(subjectIdValue),
+                  startTime: Value(remoteStart),
+                  endTime: remoteEnd != null
+                      ? Value(remoteEnd)
+                      : const Value.absent(),
+                  status: Value(status),
+                  createdAt: Value(remoteCreatedAt ?? DateTime.now()),
+                  lastModified: Value(remoteLastModified ?? DateTime.now()),
+                  synced: const Value(true),
+                ),
+                mode: InsertMode.insertOrReplace,
+              );
+        } else if (remoteLastModified != null &&
+            remoteLastModified.isAfter(localSession.lastModified)) {
+          await (db.update(
+            db.sessions,
+          )..where((t) => t.id.equals(localId))).write(
+            SessionsCompanion(
+              subjectId: Value(subjectIdValue),
+              startTime: Value(remoteStart),
+              endTime: remoteEnd != null
+                  ? Value(remoteEnd)
+                  : Value(localSession.endTime),
+              status: Value(status),
+              lastModified: Value(remoteLastModified),
+              synced: const Value(true),
+            ),
+          );
+        }
+      }
+
+      final attendanceRecords = await supabase.from('attendance').select();
+      for (final record in attendanceRecords) {
+        final sessionLocalId = record['local_session_id'] as int?;
+        if (sessionLocalId == null || !sessionLocalIds.contains(sessionLocalId))
+          continue;
+
+        final localId = record['local_id'] as int?;
+        if (localId == null) continue;
+
+        final remoteLastModified = _parseDateTime(record['last_modified']);
+        final remoteCreatedAt = _parseDateTime(record['created_at']);
+
+        final localAttendance = await (db.select(
+          db.attendance,
+        )..where((t) => t.id.equals(localId))).getSingleOrNull();
+
+        if (localAttendance == null) {
+          await db
+              .into(db.attendance)
+              .insert(
+                AttendanceCompanion(
+                  id: Value(localId),
+                  studentId: Value(record['student_id'] ?? ''),
+                  sessionId: Value(sessionLocalId),
+                  status: Value(record['status'] ?? 'present'),
+                  createdAt: Value(remoteCreatedAt ?? DateTime.now()),
+                  lastModified: Value(remoteLastModified ?? DateTime.now()),
+                  synced: const Value(true),
+                ),
+                mode: InsertMode.insertOrReplace,
+              );
+        } else if (remoteLastModified != null &&
+            remoteLastModified.isAfter(localAttendance.lastModified)) {
+          await (db.update(
+            db.attendance,
+          )..where((t) => t.id.equals(localId))).write(
+            AttendanceCompanion(
+              studentId: Value(
+                record['student_id'] ?? localAttendance.studentId,
+              ),
+              sessionId: Value(sessionLocalId),
+              status: Value(record['status'] ?? localAttendance.status),
+              lastModified: Value(remoteLastModified),
+              synced: const Value(true),
+            ),
+          );
+        }
+      }
+
+      final subjectStudentsRemote = await supabase
+          .from('subject_students')
+          .select();
+      for (final entry in subjectStudentsRemote) {
+        final subjectLocalId = entry['local_subject_id'] as int?;
+        final studentLocalId = entry['local_student_id'] as int?;
+        if (subjectLocalId == null || studentLocalId == null) continue;
+
+        final mappedSubjectId = subjectIdMap[subjectLocalId] ?? subjectLocalId;
+        if (!profSubjectLocalIds.contains(subjectLocalId) &&
+            subjectIdMap[subjectLocalId] == null)
+          continue;
+
+        final mappedStudentId = studentIdMap[studentLocalId] ?? studentLocalId;
+
+        final localId = entry['local_id'] as int?;
+        if (localId == null) continue;
+
+        final remoteLastModified = _parseDateTime(entry['last_modified']);
+        final remoteCreatedAt = _parseDateTime(entry['created_at']);
+
+        final localSubjectStudent = await (db.select(
+          db.subjectStudents,
+        )..where((t) => t.id.equals(localId))).getSingleOrNull();
+
+        if (localSubjectStudent == null) {
+          await db
+              .into(db.subjectStudents)
+              .insert(
+                SubjectStudentsCompanion(
+                  id: Value(localId),
+                  subjectId: Value(mappedSubjectId),
+                  studentId: Value(mappedStudentId),
+                  createdAt: Value(remoteCreatedAt ?? DateTime.now()),
+                  lastModified: Value(remoteLastModified ?? DateTime.now()),
+                  synced: const Value(true),
+                ),
+                mode: InsertMode.insertOrReplace,
+              );
+        } else if (remoteLastModified != null &&
+            remoteLastModified.isAfter(localSubjectStudent.lastModified)) {
+          await (db.update(
+            db.subjectStudents,
+          )..where((t) => t.id.equals(localId))).write(
+            SubjectStudentsCompanion(
+              subjectId: Value(mappedSubjectId),
+              studentId: Value(mappedStudentId),
+              lastModified: Value(remoteLastModified),
+              synced: const Value(true),
+            ),
+          );
         }
       }
 
