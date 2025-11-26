@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/database/app_database.dart';
 import 'package:myattendance/core/widgets/custom_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:myattendance/features/auth/services/auth_service.dart';
 import 'package:myattendance/features/Settings/widgets/confirmation_popup.dart';
+import 'package:myattendance/core/services/sync_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -18,11 +20,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String _selectedLanguage = 'English';
   bool _isSyncing = false;
   String _lastSyncTime = 'Never';
+  String _syncStatusMessage = 'Checking sync status...';
+  SyncStatus? _currentSyncStatus;
 
   @override
   void initState() {
     super.initState();
     _loadUserSettings();
+    _checkSyncStatus();
   }
 
   Future<void> _loadUserSettings() async {
@@ -33,19 +38,45 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  final syncService = SyncService(
+    db: AppDatabase.instance,
+    supabase: Supabase.instance.client,
+  );
+
+  Future<void> _checkSyncStatus() async {
+    try {
+      final status = await syncService.checkSyncStatus();
+      setState(() {
+        _currentSyncStatus = status.status;
+        _syncStatusMessage = status.message;
+        if (status.localUnsyncedCount > 0) {
+          _syncStatusMessage += ' (${status.localUnsyncedCount} unsynced)';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _syncStatusMessage = 'Error checking status: $e';
+        _currentSyncStatus = SyncStatus.unknown;
+      });
+    }
+  }
+
   Future<void> _handleSync() async {
     setState(() {
       _isSyncing = true;
     });
 
     try {
-      // Simulate sync process - in a real app, this would sync with your backend
-      await Future.delayed(const Duration(seconds: 2));
+      // Use smart sync which handles bidirectional sync
+      await syncService.smartSync();
 
       // Update last sync time
       final now = DateTime.now();
       final formattedTime =
           '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+      // Refresh sync status
+      await _checkSyncStatus();
 
       setState(() {
         _lastSyncTime = 'Today at $formattedTime';
@@ -276,16 +307,24 @@ class _SettingsPageState extends State<SettingsPage> {
 
         // Sync Setting
         _buildSettingTile(
-          icon: Icons.sync_outlined,
+          icon: _getSyncIcon(),
           title: 'Sync Data',
-          subtitle: _isSyncing ? 'Syncing...' : 'Last sync: $_lastSyncTime',
+          subtitle: _isSyncing
+              ? 'Syncing...'
+              : _syncStatusMessage.isEmpty
+              ? 'Last sync: $_lastSyncTime'
+              : _syncStatusMessage,
           trailing: _isSyncing
               ? const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.sync),
+              : IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _checkSyncStatus,
+                  tooltip: 'Refresh sync status',
+                ),
           onTap: _isSyncing ? null : _handleSync,
         ),
         const Divider(),
@@ -402,6 +441,22 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  IconData _getSyncIcon() {
+    switch (_currentSyncStatus) {
+      case SyncStatus.serverNewer:
+        return Icons.download_outlined;
+      case SyncStatus.localNewer:
+        return Icons.upload_outlined;
+      case SyncStatus.bothNewer:
+        return Icons.sync_problem_outlined;
+      case SyncStatus.upToDate:
+        return Icons.check_circle_outline;
+      case SyncStatus.unknown:
+      case null:
+        return Icons.sync_outlined;
+    }
   }
 
   void _showAboutDialog() {
