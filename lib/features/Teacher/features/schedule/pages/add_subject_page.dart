@@ -141,7 +141,15 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
     if (_formKey.currentState!.saveAndValidate()) {
       final subject = _formKey.currentState!.value;
       final profId = Supabase.instance.client.auth.currentUser?.id;
-
+      if (profId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to determine the current professor.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
       debugPrint("Subject: ${subject.toString()}");
 
       List<Map<String, dynamic>> scheduleObjects = [];
@@ -234,7 +242,7 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             termId: drift.Value(subject['term'].id),
             yearLevel: drift.Value(subject['yearLevel']),
             section: drift.Value(subject['section']),
-            profId: drift.Value(profId.toString()),
+            profId: drift.Value(profId),
             synced: drift.Value(false),
             createdAt: drift.Value(DateTime.now()),
             lastModified: drift.Value(DateTime.now()),
@@ -243,9 +251,7 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           final subjectId = await db.insertSubject(subjectCompanion);
 
           if (scheduleObjects.isNotEmpty) {
-            List<SchedulesCompanion> scheduleCompanions = scheduleObjects.map((
-              schedule,
-            ) {
+            final scheduleCompanions = scheduleObjects.map((schedule) {
               return SchedulesCompanion(
                 subjectId: drift.Value(subjectId),
                 day: drift.Value(schedule['day']),
@@ -260,6 +266,18 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
 
             await db.insertSchedules(scheduleCompanions);
           }
+
+          final insertedSchedules = await db.getSchedulesBySubjectId(subjectId);
+          await _syncNewSubjectToSupabase(
+            localSubjectId: subjectId,
+            code: subject['subjectCode'],
+            name: subject['subjectName'],
+            yearLevel: subject['yearLevel'],
+            section: subject['section'],
+            term: subject['term'] as Term,
+            profId: profId,
+            schedules: insertedSchedules,
+          );
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -284,6 +302,158 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _syncNewSubjectToSupabase({
+    required int localSubjectId,
+    required String code,
+    required String name,
+    required String yearLevel,
+    required String section,
+    required Term term,
+    required String profId,
+    required List<Schedule> schedules,
+  }) async {
+    final supabase = Supabase.instance.client;
+    try {
+      String? subjectUuid;
+      final existingSubject = await supabase
+          .from('subjects')
+          .select('id')
+          .eq('code', code)
+          .maybeSingle();
+      if (existingSubject != null && existingSubject['id'] != null) {
+        subjectUuid = existingSubject['id'] as String?;
+      }
+
+      if (subjectUuid == null) {
+        final newSubject = await supabase
+            .from('subjects')
+            .insert({
+              'code': code,
+              'name': name,
+              'created_at': DateTime.now().toIso8601String(),
+              'last_modified': DateTime.now().toIso8601String(),
+            })
+            .select('id')
+            .single();
+        subjectUuid = newSubject['id'] as String?;
+      }
+
+      if (subjectUuid == null) {
+        debugPrint('⚠️ Failed to create subject "$code" in Supabase');
+        return;
+      }
+
+      final termUuid = await _resolveTermUuid(term);
+      if (termUuid == null) {
+        debugPrint(
+          '⚠️ Unable to sync subject "$code": matching term not found in Supabase',
+        );
+        return;
+      }
+
+      String? offeringUuid;
+      final existingOffering = await supabase
+          .from('subject_offerings')
+          .select('id')
+          .eq('local_id', localSubjectId)
+          .maybeSingle();
+      if (existingOffering != null && existingOffering['id'] != null) {
+        offeringUuid = existingOffering['id'] as String?;
+      }
+
+      if (offeringUuid == null) {
+        final newOffering = await supabase
+            .from('subject_offerings')
+            .insert({
+              'local_id': localSubjectId,
+              'year_level': yearLevel,
+              'section': section,
+              'prof_id': profId,
+              'term_id': termUuid,
+              'subject_id': subjectUuid,
+              'created_at': DateTime.now().toIso8601String(),
+              'last_modified': DateTime.now().toIso8601String(),
+            })
+            .select('id')
+            .single();
+        offeringUuid = newOffering['id'] as String?;
+      }
+
+      if (offeringUuid == null) {
+        debugPrint(
+          '⚠️ Failed to create subject offering for "$code" in Supabase',
+        );
+        return;
+      }
+
+      await (db.update(db.subjects)..where((t) => t.id.equals(localSubjectId)))
+          .write(
+        SubjectsCompanion(
+          supabaseId: drift.Value(offeringUuid),
+          synced: drift.Value(true),
+          lastModified: drift.Value(DateTime.now()),
+        ),
+      );
+
+      if (schedules.isNotEmpty) {
+        final nowIso = DateTime.now().toIso8601String();
+        final payloads = schedules.map((schedule) {
+          return {
+            'local_id': schedule.id,
+            'local_subject_id': localSubjectId,
+            'subject_id': offeringUuid,
+            'day': schedule.day,
+            'start_time': schedule.startTime,
+            'end_time': schedule.endTime,
+            'room': schedule.room ?? '',
+            'created_at': nowIso,
+            'last_modified': nowIso,
+          };
+        }).toList();
+
+        final List response = await supabase
+            .from('schedules')
+            .insert(payloads)
+            .select('id, local_id');
+
+        for (final remote in response) {
+          final localId = remote['local_id'] as int?;
+          final uuid = remote['id'] as String?;
+          if (localId == null || uuid == null) continue;
+          await (db.update(db.schedules)..where((t) => t.id.equals(localId)))
+              .write(
+            SchedulesCompanion(
+              supabaseId: drift.Value(uuid),
+              synced: drift.Value(true),
+              lastModified: drift.Value(DateTime.now()),
+            ),
+          );
+        }
+      }
+
+      debugPrint('✅ Synced new subject "$code" with Supabase');
+    } catch (e, st) {
+      debugPrint('⚠️ Failed to sync subject "$code": $e\n$st');
+    }
+  }
+
+  Future<String?> _resolveTermUuid(Term term) async {
+    final supabase = Supabase.instance.client;
+    try {
+      final response = await supabase
+          .from('terms')
+          .select('id')
+          .eq('term', term.term)
+          .eq('start_year', term.startYear)
+          .eq('end_year', term.endYear)
+          .maybeSingle();
+      return response?['id'] as String?;
+    } catch (e, st) {
+      debugPrint('⚠️ Failed to resolve term UUID: $e\n$st');
+      return null;
     }
   }
 

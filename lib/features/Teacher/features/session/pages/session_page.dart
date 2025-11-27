@@ -377,7 +377,7 @@ class _SessionPageState extends State<SessionPage> {
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          '$count students',
+                                          '$count present',
                                           style: TextStyle(
                                             color: scheme.onSurface.withOpacity(
                                               0.8,

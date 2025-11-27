@@ -183,18 +183,80 @@ class _AttendancePageState extends State<AttendancePage> {
 
     if (confirmed == true) {
       try {
-        await AppDatabase.instance.finishSession(int.parse(widget.sessionID));
+        final db = AppDatabase.instance;
+        final sessionId = int.parse(widget.sessionID);
+
+        // Get session details to get subjectId
+        final session = await db.getSessionById(sessionId);
+        if (session == null) {
+          throw Exception('Session not found');
+        }
+
+        // Get all enrolled students for this subject
+        final enrolledStudents = await db.getStudentsInSubject(
+          session.subjectId,
+        );
+
+        // Get all existing attendance records for this session
+        final existingAttendance = await db.getAttendanceBySessionID(sessionId);
+
+        // Get student IDs who already have attendance records
+        final studentsWithAttendance = existingAttendance
+            .map((a) => a.studentId)
+            .toSet();
+
+        // Find students who don't have attendance records yet
+        final absentStudents = enrolledStudents
+            .where(
+              (student) => !studentsWithAttendance.contains(student.studentId),
+            )
+            .toList();
+
+        // Create "absent" attendance records for students without records
+        if (absentStudents.isNotEmpty) {
+          debugPrint(
+            '📝 [FINISH SESSION] Creating absent records for ${absentStudents.length} students',
+          );
+
+          for (var student in absentStudents) {
+            try {
+              await db.insertAttendance(
+                AttendanceCompanion.insert(
+                  studentId: student.studentId,
+                  sessionId: sessionId,
+                  status: 'absent',
+                  synced: false,
+                ),
+              );
+              debugPrint(
+                '   ✅ Marked ${student.firstName} ${student.lastName} (${student.studentId}) as absent',
+              );
+            } catch (e) {
+              debugPrint(
+                '   ❌ Failed to mark ${student.studentId} as absent: $e',
+              );
+            }
+          }
+        }
+
+        // Now finish the session
+        await db.finishSession(sessionId);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session ended successfully'),
+            SnackBar(
+              content: Text(
+                absentStudents.isNotEmpty
+                    ? 'Session ended. ${absentStudents.length} students marked as absent.'
+                    : 'Session ended successfully',
+              ),
               backgroundColor: Colors.green,
             ),
           );
           Navigator.pop(context, 'session_ended');
         }
       } catch (e) {
+        debugPrint('❌ [FINISH SESSION] Error: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

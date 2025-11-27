@@ -64,8 +64,16 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
           .toList();
       presentAttendances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+      // Filter absent students from attendance records
+      final absentAttendances = attendanceList
+          .where((a) => a.status.toLowerCase() == 'absent')
+          .toList();
+
       debugPrint(
         '✅ [PRESENT STUDENTS] Found ${presentAttendances.length} present students',
+      );
+      debugPrint(
+        '❌ [ABSENT STUDENTS] Found ${absentAttendances.length} absent students',
       );
 
       // Log each attendance record
@@ -83,19 +91,23 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
         }
       }
 
-      // Get student IDs who are present
-      final presentStudentIds = presentAttendances
-          .map((a) => a.studentId)
-          .toSet();
+      // Create a map of studentId to attendance record for efficient lookup
+      final absentAttendanceMap = {
+        for (var record in absentAttendances) record.studentId: record
+      };
 
-      // Find absent students (enrolled but not present)
+      // Find students who have absent attendance records
       final absentStudents = enrolledStudents
-          .where((student) => !presentStudentIds.contains(student.studentId))
+          .where((student) => absentAttendanceMap.containsKey(student.studentId))
           .toList();
 
-      debugPrint(
-        '❌ [ABSENT STUDENTS] Found ${absentStudents.length} absent students',
-      );
+      // Sort absent students by their attendance record creation time
+      absentStudents.sort((a, b) {
+        final aRecord = absentAttendanceMap[a.studentId]!;
+        final bRecord = absentAttendanceMap[b.studentId]!;
+        return bRecord.createdAt.compareTo(aRecord.createdAt);
+      });
+
       for (var student in absentStudents) {
         debugPrint(
           '   👤 Absent: ${student.firstName} ${student.lastName} (${student.studentId})',

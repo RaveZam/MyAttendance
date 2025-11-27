@@ -19,6 +19,7 @@ class Attendance extends Table {
   )();
   TextColumn get status => text()();
   BoolColumn get synced => boolean()();
+  TextColumn get supabaseId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
       dateTime().withDefault(currentDateAndTime)();
@@ -33,6 +34,7 @@ class Sessions extends Table {
   DateTimeColumn get endTime => dateTime().nullable()();
   TextColumn get status => text()();
   BoolColumn get synced => boolean()();
+  TextColumn get supabaseId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
       dateTime().withDefault(currentDateAndTime)();
@@ -49,6 +51,7 @@ class Subjects extends Table {
     'NOT NULL REFERENCES terms(id) ON DELETE CASCADE',
   )();
   BoolColumn get synced => boolean()();
+  TextColumn get supabaseId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
       dateTime().withDefault(currentDateAndTime)();
@@ -64,6 +67,7 @@ class Schedules extends Table {
   TextColumn get endTime => text()();
   TextColumn get room => text().nullable()();
   BoolColumn get synced => boolean()();
+  TextColumn get supabaseId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
       dateTime().withDefault(currentDateAndTime)();
@@ -92,6 +96,7 @@ class SubjectStudents extends Table {
   )();
 
   BoolColumn get synced => boolean().withDefault(const Constant(false))();
+  TextColumn get supabaseId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
       dateTime().withDefault(currentDateAndTime)();
