@@ -28,6 +28,10 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   ];
 
   List<Term> _terms = [];
+  List<Map<String, dynamic>> _availableSubjects = [];
+  Map<String, dynamic>? _selectedSubject;
+  bool _isLoadingSubjects = false;
+  bool _showAvailableSubjects = false;
   final List<String> _gradeLevels = [
     '1st Year',
     '2nd Year',
@@ -46,8 +50,73 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
   void initState() {
     super.initState();
     loadTerms();
+    loadAvailableSubjects();
     if (widget.existingSubject != null) {
       _populateFormWithExistingData();
+    }
+  }
+
+  Future<void> loadAvailableSubjects() async {
+    setState(() {
+      _isLoadingSubjects = true;
+    });
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('subjects')
+          .select('code, name, id')
+          .order('code');
+
+      setState(() {
+        _availableSubjects = List<Map<String, dynamic>>.from(response);
+        _isLoadingSubjects = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading available subjects: $e');
+      setState(() {
+        _isLoadingSubjects = false;
+      });
+    }
+  }
+
+  void _selectSubject(Map<String, dynamic> subject) {
+    setState(() {
+      _selectedSubject = subject;
+      // Pre-fill the form with selected subject
+      if (_formKey.currentState != null) {
+        _formKey.currentState!.patchValue({
+          'subjectCode': subject['code'],
+          'subjectName': subject['name'],
+        });
+      }
+    });
+  }
+
+  void _clearSelectedSubject() {
+    setState(() {
+      _selectedSubject = null;
+      if (_formKey.currentState != null) {
+        _formKey.currentState!.patchValue({
+          'subjectCode': null,
+          'subjectName': null,
+        });
+      }
+      _showAvailableSubjects = false;
+    });
+  }
+
+  Future<bool> _checkSubjectExists(String code) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('subjects')
+          .select('id')
+          .eq('code', code)
+          .maybeSingle();
+      return response != null;
+    } catch (e) {
+      debugPrint('Error checking subject existence: $e');
+      return false;
     }
   }
 
@@ -236,9 +305,26 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
             ),
           );
         } else {
+          // Use selected subject or create new one
+          final String subjectCode;
+          final String subjectName;
+          final String? selectedSubjectId;
+
+          if (_selectedSubject != null) {
+            // Use selected subject from Supabase
+            subjectCode = _selectedSubject!['code'] as String;
+            subjectName = _selectedSubject!['name'] as String;
+            selectedSubjectId = _selectedSubject!['id'] as String;
+          } else {
+            // Use manually entered subject
+            subjectCode = subject['subjectCode'] as String;
+            subjectName = subject['subjectName'] as String;
+            selectedSubjectId = null;
+          }
+
           final subjectCompanion = SubjectsCompanion(
-            subjectCode: drift.Value(subject['subjectCode']),
-            subjectName: drift.Value(subject['subjectName']),
+            subjectCode: drift.Value(subjectCode),
+            subjectName: drift.Value(subjectName),
             termId: drift.Value(subject['term'].id),
             yearLevel: drift.Value(subject['yearLevel']),
             section: drift.Value(subject['section']),
@@ -270,13 +356,14 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           final insertedSchedules = await db.getSchedulesBySubjectId(subjectId);
           await _syncNewSubjectToSupabase(
             localSubjectId: subjectId,
-            code: subject['subjectCode'],
-            name: subject['subjectName'],
+            code: subjectCode,
+            name: subjectName,
             yearLevel: subject['yearLevel'],
             section: subject['section'],
             term: subject['term'] as Term,
             profId: profId,
             schedules: insertedSchedules,
+            existingSubjectId: selectedSubjectId,
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -314,31 +401,40 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
     required Term term,
     required String profId,
     required List<Schedule> schedules,
+    String? existingSubjectId,
   }) async {
     final supabase = Supabase.instance.client;
     try {
       String? subjectUuid;
-      final existingSubject = await supabase
-          .from('subjects')
-          .select('id')
-          .eq('code', code)
-          .maybeSingle();
-      if (existingSubject != null && existingSubject['id'] != null) {
-        subjectUuid = existingSubject['id'] as String?;
-      }
 
-      if (subjectUuid == null) {
-        final newSubject = await supabase
+      // Use existing subject ID if provided (from selected subject)
+      if (existingSubjectId != null) {
+        subjectUuid = existingSubjectId;
+      } else {
+        // Check if subject exists in Supabase
+        final existingSubject = await supabase
             .from('subjects')
-            .insert({
-              'code': code,
-              'name': name,
-              'created_at': DateTime.now().toIso8601String(),
-              'last_modified': DateTime.now().toIso8601String(),
-            })
             .select('id')
-            .single();
-        subjectUuid = newSubject['id'] as String?;
+            .eq('code', code)
+            .maybeSingle();
+        if (existingSubject != null && existingSubject['id'] != null) {
+          subjectUuid = existingSubject['id'] as String?;
+        }
+
+        // Only create new subject if it doesn't exist
+        if (subjectUuid == null) {
+          final newSubject = await supabase
+              .from('subjects')
+              .insert({
+                'code': code,
+                'name': name,
+                'created_at': DateTime.now().toIso8601String(),
+                'last_modified': DateTime.now().toIso8601String(),
+              })
+              .select('id')
+              .single();
+          subjectUuid = newSubject['id'] as String?;
+        }
       }
 
       if (subjectUuid == null) {
@@ -389,8 +485,9 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
         return;
       }
 
-      await (db.update(db.subjects)..where((t) => t.id.equals(localSubjectId)))
-          .write(
+      await (db.update(
+        db.subjects,
+      )..where((t) => t.id.equals(localSubjectId))).write(
         SubjectsCompanion(
           supabaseId: drift.Value(offeringUuid),
           synced: drift.Value(true),
@@ -423,8 +520,9 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           final localId = remote['local_id'] as int?;
           final uuid = remote['id'] as String?;
           if (localId == null || uuid == null) continue;
-          await (db.update(db.schedules)..where((t) => t.id.equals(localId)))
-              .write(
+          await (db.update(
+            db.schedules,
+          )..where((t) => t.id.equals(localId))).write(
             SchedulesCompanion(
               supabaseId: drift.Value(uuid),
               synced: drift.Value(true),
@@ -484,27 +582,215 @@ class _AddSubjectPageState extends State<AddSubjectPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FormBuilderTextField(
-                name: 'subjectName',
-                decoration: const InputDecoration(
-                  labelText: 'Subject Name',
-                  hintText: 'Enter subject name',
-                  border: OutlineInputBorder(),
+              // Available Subjects List (toggleable)
+              if (widget.existingSubject == null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Available Subjects',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _showAvailableSubjects = !_showAvailableSubjects;
+                        });
+                      },
+                      child: Text(
+                        _showAvailableSubjects ? 'Hide' : 'Show',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
-                validator: FormBuilderValidators.required(),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 12),
+                if (_showAvailableSubjects)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 140),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: _isLoadingSubjects
+                          ? const Center(child: CircularProgressIndicator())
+                          : _availableSubjects.isEmpty
+                              ? const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text('No subjects available'),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  padding: const EdgeInsets.all(8),
+                                  physics: const BouncingScrollPhysics(),
+                                  itemCount: _availableSubjects.length,
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (context, index) {
+                                    final subject = _availableSubjects[index];
+                                    final isSelected = _selectedSubject != null &&
+                                        _selectedSubject!['id'] == subject['id'];
+                                    return ListTile(
+                                      tileColor: isSelected
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.15)
+                                          : null,
+                                      leading: CircleAvatar(
+                                        backgroundColor:
+                                            Theme.of(context).colorScheme.primary,
+                                        child: const Icon(
+                                          Icons.book,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        subject['code'] ?? '',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: isSelected
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        subject['name'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      trailing: isSelected
+                                          ? const Icon(
+                                              Icons.check,
+                                              color: Colors.blueAccent,
+                                            )
+                                          : null,
+                                      onTap: () => _selectSubject(subject),
+                                    );
+                                  },
+                                ),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+              ],
 
-              FormBuilderTextField(
-                name: 'subjectCode',
-                decoration: const InputDecoration(
-                  labelText: 'Subject Code',
-                  hintText: 'e.g., MATH101',
-                  border: OutlineInputBorder(),
+              // Selected Subject Card
+              if (_selectedSubject != null &&
+                  widget.existingSubject == null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.book,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedSubject!['code'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedSubject!['name'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _clearSelectedSubject,
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                      ),
+                    ],
+                  ),
                 ),
-                validator: FormBuilderValidators.required(),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
+              ],
+
+              // Subject Name and Code Fields (hidden when subject is selected)
+              if (_selectedSubject == null ||
+                  widget.existingSubject != null) ...[
+                FormBuilderTextField(
+                  name: 'subjectName',
+                  decoration: const InputDecoration(
+                    labelText: 'Subject Name',
+                    hintText: 'Enter subject name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: FormBuilderValidators.required(),
+                ),
+                const SizedBox(height: 20),
+
+                FormBuilderTextField(
+                  name: 'subjectCode',
+                  decoration: const InputDecoration(
+                    labelText: 'Subject Code',
+                    hintText: 'e.g., MATH101',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: FormBuilderValidators.required(),
+                  onChanged: (value) async {
+                    if (value != null && value.isNotEmpty) {
+                      final exists = await _checkSubjectExists(value);
+                      if (exists && _formKey.currentState != null) {
+                        _formKey.currentState!.fields['subjectCode']?.invalidate(
+                          'This subject code already exists. Please select from available subjects above.',
+                        );
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
 
               FormBuilderDropdown<Term>(
                 name: 'term',
