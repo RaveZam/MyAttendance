@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'student_add_page.dart';
 
@@ -14,12 +16,16 @@ class _StudentPageState extends State<StudentPage> {
   List<Map<String, dynamic>> students = [];
   List<Map<String, dynamic>> filteredStudents = [];
   Subject? subjectDetails;
+  bool isLoadingAttendance = true;
+  int totalClasses = 0;
+  int averageAttendancePercent = 0;
+  Map<String, StudentAttendanceSummary> attendanceSummaries = {};
 
   @override
   void initState() {
     super.initState();
     getSubjectDetails();
-    getAllStudents();
+    _loadStudentsAndAttendance();
   }
 
   @override
@@ -54,19 +60,99 @@ class _StudentPageState extends State<StudentPage> {
     }
   }
 
-  void getAllStudents() async {
-    final studentsData = await AppDatabase.instance.getStudentsInSubject(
-      int.parse(widget.subjectId),
-    );
+  Future<void> _loadStudentsAndAttendance() async {
+    final subjectId = int.tryParse(widget.subjectId);
+    if (subjectId == null) {
+      if (mounted) {
+        setState(() {
+          isLoadingAttendance = false;
+        });
+      }
+      return;
+    }
 
-    setState(() {
-      students = studentsData.map((student) => student.toJson()).toList();
-      filteredStudents = students; // Initialize filtered students
-    });
+    if (mounted) {
+      setState(() {
+        isLoadingAttendance = true;
+      });
+    }
+
+    try {
+      final studentsData = await AppDatabase.instance.getStudentsInSubject(
+        subjectId,
+      );
+      final sessionsData = await AppDatabase.instance.getSessionsBySubjectId(
+        subjectId,
+      );
+      final sessionIds = sessionsData.map((session) => session.id).toList();
+      final attendanceRecords = sessionIds.isEmpty
+          ? <AttendanceData>[]
+          : await AppDatabase.instance.getAttendanceBySessionIds(sessionIds);
+
+      final summaryMap = <String, StudentAttendanceSummary>{};
+      var totalAttendedRecords = 0;
+
+      for (final student in studentsData) {
+        final records = attendanceRecords
+            .where((record) => record.studentId == student.studentId)
+            .toList();
+
+        final presentCount = records
+            .where((record) => _matchesStatus(record.status, 'present'))
+            .length;
+        final lateCount = records
+            .where((record) => _matchesStatus(record.status, 'late'))
+            .length;
+        final absentCount = records
+            .where((record) => _matchesStatus(record.status, 'absent'))
+            .length;
+
+        totalAttendedRecords += presentCount + lateCount;
+
+        final summary = StudentAttendanceSummary.fromCounts(
+          present: presentCount,
+          absent: absentCount,
+          late: lateCount,
+          totalClasses: sessionsData.length,
+        );
+        summaryMap[student.studentId] = summary;
+      }
+
+      final totalPossibleRecords = studentsData.length * sessionsData.length;
+      final calculatedAverage = totalPossibleRecords == 0
+          ? 0
+          : min(
+              100,
+              ((totalAttendedRecords / totalPossibleRecords) * 100).round(),
+            );
+
+      if (!mounted) return;
+
+      setState(() {
+        students = studentsData.map((student) => student.toJson()).toList();
+        filteredStudents = students;
+        totalClasses = sessionsData.length;
+        averageAttendancePercent = calculatedAverage;
+        attendanceSummaries = summaryMap;
+      });
+    } catch (error) {
+      debugPrint('Error loading student attendance stats: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingAttendance = false;
+        });
+      }
+    }
+  }
+
+  bool _matchesStatus(String? status, String target) {
+    if (status == null) return false;
+    return status.toLowerCase().trim() == target;
   }
 
   Future<void> refreshData() async {
-    getAllStudents();
+    await _loadStudentsAndAttendance();
     // Reset search to show all students
     setState(() {
       searchQuery = '';
@@ -147,102 +233,203 @@ class _StudentPageState extends State<StudentPage> {
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: RefreshIndicator(
-        onRefresh: refreshData,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Class Overview Card
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: scheme.shadow.withValues(alpha: 0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${subjectDetails?.subjectName} ${subjectDetails?.subjectCode}',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${subjectDetails?.yearLevel} ${subjectDetails?.section}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatColumn(
-                            value: students.length.toString(),
-                            label: 'Total Students',
-                          ),
-                        ),
-                        Expanded(
-                          child: _StatColumn(
-                            value: '87%',
-                            label: 'Avg Attendance',
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _StatColumn(value: '32', label: 'Total Classes'),
-                            ],
-                          ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          RefreshIndicator(
+            onRefresh: refreshData,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Class Overview Card
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: scheme.shadow.withValues(alpha: 0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-
-              // Student Attendance Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Student Attendance',
+                          '${subjectDetails?.subjectName} ${subjectDetails?.subjectCode}',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
                             color: scheme.onSurface,
                           ),
                         ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(
-                            Icons.filter_list,
+                        const SizedBox(height: 4),
+                        Text(
+                          '${subjectDetails?.yearLevel} ${subjectDetails?.section}',
+                          style: TextStyle(
+                            fontSize: 13,
                             color: scheme.onSurfaceVariant,
                           ),
-                          onPressed: () {},
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatColumn(
+                                value: students.length.toString(),
+                                label: 'Total Students',
+                              ),
+                            ),
+                            Expanded(
+                              child: _StatColumn(
+                                value: '$averageAttendancePercent%',
+                                label: 'Avg Attendance',
+                              ),
+                            ),
+                            Expanded(
+                              child: _StatColumn(
+                                value: totalClasses.toString(),
+                                label: 'Total Classes',
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
 
+                  // Student Attendance Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Student Attendance',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(
+                                Icons.filter_list,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              onPressed: () {},
+                            ),
+                          ],
+                        ),
+
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: scheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: scheme.shadow.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            onChanged: (value) {
+                              setState(() {
+                                searchQuery = value;
+                              });
+                              filterStudents(value);
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search students...',
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                              suffixIcon: searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          searchQuery = '';
+                                        });
+                                        filterStudents('');
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Filter Buttons
+                        Row(
+                          children: [
+                            _FilterButton(
+                              label: 'All',
+                              isSelected: selectedFilter == 'All',
+                              onTap: () =>
+                                  setState(() => selectedFilter = 'All'),
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterButton(
+                              label: 'Good (90%+)',
+                              isSelected: selectedFilter == 'Good (90%+)',
+                              onTap: () => setState(
+                                () => selectedFilter = 'Good (90%+)',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _FilterButton(
+                              label: 'At Risk (<75%)',
+                              isSelected: selectedFilter == 'At Risk (<75%)',
+                              onTap: () => setState(
+                                () => selectedFilter = 'At Risk (<75%)',
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+
+                  // Search Results Info
+                  if (searchQuery.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '${filteredStudents.length} student${filteredStudents.length == 1 ? '' : 's'} found',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: scheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                  // No Students Message
+                  if (filteredStudents.isEmpty)
                     Container(
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: scheme.surface,
                         borderRadius: BorderRadius.circular(12),
@@ -254,204 +441,143 @@ class _StudentPageState extends State<StudentPage> {
                           ),
                         ],
                       ),
-                      child: TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            searchQuery = value;
-                          });
-                          filterStudents(value);
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search students...',
-                          prefixIcon: Icon(
-                            Icons.search,
+                      child: Column(
+                        children: [
+                          Icon(
+                            searchQuery.isNotEmpty
+                                ? Icons.search_off
+                                : Icons.people_outline,
+                            size: 48,
                             color: scheme.onSurfaceVariant,
                           ),
-                          suffixIcon: searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.clear,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      searchQuery = '';
-                                    });
-                                    filterStudents('');
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                          const SizedBox(height: 12),
+                          Text(
+                            searchQuery.isNotEmpty
+                                ? 'No students found'
+                                : 'No students enrolled',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Text(
+                            searchQuery.isNotEmpty
+                                ? 'Try searching with a different term'
+                                : 'Add students to get started with attendance tracking',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
-                    // Filter Buttons
-                    Row(
-                      children: [
-                        _FilterButton(
-                          label: 'All',
-                          isSelected: selectedFilter == 'All',
-                          onTap: () => setState(() => selectedFilter = 'All'),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterButton(
-                          label: 'Good (90%+)',
-                          isSelected: selectedFilter == 'Good (90%+)',
-                          onTap: () =>
-                              setState(() => selectedFilter = 'Good (90%+)'),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterButton(
-                          label: 'At Risk (<75%)',
-                          isSelected: selectedFilter == 'At Risk (<75%)',
-                          onTap: () =>
-                              setState(() => selectedFilter = 'At Risk (<75%)'),
-                        ),
-                      ],
-                    ),
+                  // Student List
+                  ...filteredStudents.map((student) {
+                    final studentId = student['studentId']?.toString() ?? '';
+                    final stats =
+                        attendanceSummaries[studentId] ??
+                        StudentAttendanceSummary.fromCounts(
+                          present: 0,
+                          absent: 0,
+                          late: 0,
+                          totalClasses: totalClasses,
+                        );
 
+                    return _StudentCard(
+                      student: StudentData(
+                        name: '${student['firstName']} ${student['lastName']}',
+                        id: student['studentId'],
+                        present: stats.present,
+                        absent: stats.absent,
+                        late: stats.late,
+                        attendancePercentage: stats.attendancePercentage,
+                        status: stats.status,
+                        statusColor: stats.statusColor,
+                        databaseId: student['id'],
+                      ),
+                      onStudentUpdate: (updatedStudent) {
+                        debugPrint('🔄 [STUDENT UPDATE] Student data updated:');
+                        debugPrint(
+                          '   📝 Old Data: name=${student['firstName']} ${student['lastName']}, id=${student['studentId']}',
+                        );
+                        debugPrint(
+                          '   📝 New Data: name=${updatedStudent.name}, id=${updatedStudent.id}',
+                        );
+                        debugPrint(
+                          '   🆔 Database ID: ${updatedStudent.databaseId}',
+                        );
+                        debugPrint(
+                          '   ⏰ Update timestamp: ${DateTime.now().toIso8601String()}',
+                        );
+
+                        setState(() {
+                          // Find the original index in the main students list
+                          final originalIndex = students.indexWhere(
+                            (s) => s['id'] == student['id'],
+                          );
+                          if (originalIndex != -1) {
+                            students[originalIndex] = {
+                              'id': updatedStudent.databaseId!,
+                              'firstName': updatedStudent.name.split(' ').first,
+                              'lastName': updatedStudent.name
+                                  .split(' ')
+                                  .skip(1)
+                                  .join(' '),
+                              'studentId': updatedStudent.id,
+                            };
+                            // Refresh the filtered list
+                            filterStudents(searchQuery);
+                            debugPrint(
+                              '✅ [STUDENT UPDATE] UI updated successfully',
+                            );
+                          }
+                        });
+                      },
+                      onStudentDelete: (studentId) {
+                        setState(() {
+                          // Find and remove from main students list
+                          students.removeWhere((s) => s['id'] == studentId);
+                          // Refresh the filtered list
+                          filterStudents(searchQuery);
+                        });
+                      },
+                    );
+                  }).toList(),
+                  const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ),
+          if (isLoadingAttendance)
+            Positioned.fill(
+              child: Container(
+                color: scheme.background.withOpacity(0.85),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: scheme.primary),
                     const SizedBox(height: 16),
+                    Text(
+                      'Tallying student attendances',
+                      style: TextStyle(
+                        color: scheme.onBackground,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              // Search Results Info
-              if (searchQuery.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '${filteredStudents.length} student${filteredStudents.length == 1 ? '' : 's'} found',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: scheme.onSurface.withOpacity(0.7),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-
-              // No Students Message
-              if (filteredStudents.isEmpty)
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: scheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: scheme.shadow.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        searchQuery.isNotEmpty
-                            ? Icons.search_off
-                            : Icons.people_outline,
-                        size: 48,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        searchQuery.isNotEmpty
-                            ? 'No students found'
-                            : 'No students enrolled',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        searchQuery.isNotEmpty
-                            ? 'Try searching with a different term'
-                            : 'Add students to get started with attendance tracking',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Student List
-              ...filteredStudents.map((student) {
-                return _StudentCard(
-                  student: StudentData(
-                    name: student['firstName'] + ' ' + student['lastName'],
-                    id: student['studentId'],
-                    present: 0,
-                    absent: 0,
-                    late: 0,
-                    attendancePercentage: 0,
-                    status: 'Good',
-                    statusColor: Colors.green,
-                    databaseId: student['id'],
-                  ),
-                  onStudentUpdate: (updatedStudent) {
-                    debugPrint('🔄 [STUDENT UPDATE] Student data updated:');
-                    debugPrint(
-                      '   📝 Old Data: name=${student['firstName']} ${student['lastName']}, id=${student['studentId']}',
-                    );
-                    debugPrint(
-                      '   📝 New Data: name=${updatedStudent.name}, id=${updatedStudent.id}',
-                    );
-                    debugPrint(
-                      '   🆔 Database ID: ${updatedStudent.databaseId}',
-                    );
-                    debugPrint(
-                      '   ⏰ Update timestamp: ${DateTime.now().toIso8601String()}',
-                    );
-
-                    setState(() {
-                      // Find the original index in the main students list
-                      final originalIndex = students.indexWhere(
-                        (s) => s['id'] == student['id'],
-                      );
-                      if (originalIndex != -1) {
-                        students[originalIndex] = {
-                          'id': updatedStudent.databaseId!,
-                          'firstName': updatedStudent.name.split(' ').first,
-                          'lastName': updatedStudent.name
-                              .split(' ')
-                              .skip(1)
-                              .join(' '),
-                          'studentId': updatedStudent.id,
-                        };
-                        // Refresh the filtered list
-                        filterStudents(searchQuery);
-                        debugPrint(
-                          '✅ [STUDENT UPDATE] UI updated successfully',
-                        );
-                      }
-                    });
-                  },
-                  onStudentDelete: (studentId) {
-                    setState(() {
-                      // Find and remove from main students list
-                      students.removeWhere((s) => s['id'] == studentId);
-                      // Refresh the filtered list
-                      filterStudents(searchQuery);
-                    });
-                  },
-                );
-              }).toList(),
-              const SizedBox(height: 12),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -525,6 +651,84 @@ class _FilterButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class StudentAttendanceSummary {
+  final int present;
+  final int absent;
+  final int late;
+  final int attendancePercentage;
+  final String status;
+  final Color statusColor;
+
+  const StudentAttendanceSummary({
+    required this.present,
+    required this.absent,
+    required this.late,
+    required this.attendancePercentage,
+    required this.status,
+    required this.statusColor,
+  });
+
+  factory StudentAttendanceSummary.fromCounts({
+    required int present,
+    required int absent,
+    required int late,
+    required int totalClasses,
+  }) {
+    if (totalClasses == 0) {
+      return const StudentAttendanceSummary(
+        present: 0,
+        absent: 0,
+        late: 0,
+        attendancePercentage: 0,
+        status: 'No Classes',
+        statusColor: Colors.grey,
+      );
+    }
+
+    final totalRecords = present + absent + late;
+    if (totalRecords == 0) {
+      return const StudentAttendanceSummary(
+        present: 0,
+        absent: 0,
+        late: 0,
+        attendancePercentage: 0,
+        status: 'No Records',
+        statusColor: Colors.grey,
+      );
+    }
+
+    final attended = min(present + late, totalClasses);
+    final attendancePercentage = min(
+      100,
+      ((attended / totalClasses) * 100).round(),
+    );
+
+    final statusLabel = attendancePercentage >= 90
+        ? 'Excellent'
+        : attendancePercentage >= 75
+        ? 'On Track'
+        : attendancePercentage >= 50
+        ? 'Needs Work'
+        : 'At Risk';
+    final statusColor = attendancePercentage >= 90
+        ? Colors.green
+        : attendancePercentage >= 75
+        ? Colors.orange
+        : attendancePercentage >= 50
+        ? Colors.amber
+        : Colors.red;
+
+    return StudentAttendanceSummary(
+      present: present,
+      absent: absent,
+      late: late,
+      attendancePercentage: attendancePercentage,
+      status: statusLabel,
+      statusColor: statusColor,
     );
   }
 }

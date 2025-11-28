@@ -159,6 +159,16 @@ class AppDatabase extends _$AppDatabase {
     )..where((tbl) => tbl.sessionId.equals(sessionID))).get();
   }
 
+  Future<List<AttendanceData>> getAttendanceBySessionIds(List<int> sessionIds) {
+    if (sessionIds.isEmpty) {
+      return Future.value([]);
+    }
+
+    return (select(
+      attendance,
+    )..where((tbl) => tbl.sessionId.isIn(sessionIds))).get();
+  }
+
   Future<int> insertAttendance(AttendanceCompanion entry) {
     try {
       return into(attendance).insert(entry);
@@ -184,6 +194,37 @@ class AppDatabase extends _$AppDatabase {
       print("Insert error: $e\n$stack");
       rethrow;
     }
+  }
+
+  Future<Student?> getStudentByStudentId(String studentId) {
+    // Get all students and filter in memory to handle case-insensitive and whitespace
+    // This is more reliable than SQL comparison which can be case-sensitive
+    return getAllStudents().then((allStudents) {
+      final trimmedSearchId = studentId.trim().toLowerCase();
+      for (final student in allStudents) {
+        if (student.studentId.trim().toLowerCase() == trimmedSearchId) {
+          return student;
+        }
+      }
+      return null;
+    });
+  }
+
+  Future<Student?> getStudentByStudentIdInSubject(
+    String studentId,
+    int subjectId,
+  ) {
+    // Get students in the specific subject and filter in memory
+    // to handle case-insensitive and whitespace comparison
+    return getStudentsInSubject(subjectId).then((subjectStudents) {
+      final trimmedSearchId = studentId.trim().toLowerCase();
+      for (final student in subjectStudents) {
+        if (student.studentId.trim().toLowerCase() == trimmedSearchId) {
+          return student;
+        }
+      }
+      return null;
+    });
   }
 
   Future<int> enrollStudent(int subjectId, int studentId) {
