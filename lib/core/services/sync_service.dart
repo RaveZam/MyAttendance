@@ -201,13 +201,52 @@ class SyncService {
     final unsynced = await getUnsynced();
     if (unsynced.isEmpty) return;
 
+    // Separate records into inserts and updates
+    final List<Map<String, dynamic>> toInsert = [];
+    final List<Map<String, dynamic>> toUpdate = [];
+
     // Build payloads, resolving any server-side IDs required (e.g., subject.term_id)
-    final List<Map<String, dynamic>> data = [];
     for (final row in unsynced) {
       final payload = Map<String, dynamic>.from(mapRow(row));
+      final localId = (row as dynamic).id as int;
+
+      // Check if this record has a supabaseId (already synced before = UPDATE)
+      String? supabaseId;
+
+      // Special handling for students table - query Supabase by local_id
+      if (tableName == 'students') {
+        try {
+          final existingStudent = await supabase
+              .from('students')
+              .select('id')
+              .eq('local_id', localId)
+              .maybeSingle();
+
+          if (existingStudent != null && existingStudent.containsKey('id')) {
+            supabaseId = existingStudent['id'] as String?;
+          }
+        } catch (e) {
+          debugPrint('Failed to check if student exists in Supabase: $e');
+          // If query fails, treat as insert
+          supabaseId = null;
+        }
+      } else {
+        // For other tables, check if they have supabaseId column
+        if (tableName == 'subject_offerings') {
+          supabaseId = (row as dynamic).supabaseId as String?;
+        } else if (tableName == 'schedules') {
+          supabaseId = (row as dynamic).supabaseId as String?;
+        } else if (tableName == 'sessions') {
+          supabaseId = (row as dynamic).supabaseId as String?;
+        } else if (tableName == 'attendance') {
+          supabaseId = (row as dynamic).supabaseId as String?;
+        } else if (tableName == 'subject_students') {
+          supabaseId = (row as dynamic).supabaseId as String?;
+        }
+      }
 
       if (tableName == 'subject_offerings') {
-        // First, ensure the subjects record exists in Supabase
+        // First, try to resolve the subjects record in Supabase (but do NOT create it)
         final subjectCode = payload['subject_code'] as String?;
         final subjectName = payload['subject_name'] as String?;
         String? subjectUuid;
@@ -224,14 +263,6 @@ class SyncService {
 
             if (subjectResp != null && subjectResp.containsKey('id')) {
               subjectUuid = subjectResp['id'] as String?;
-            } else {
-              // Create the subject record if it doesn't exist
-              final newSubjectResp = await supabase
-                  .from('subjects')
-                  .insert({'code': subjectCode, 'name': subjectName})
-                  .select('id')
-                  .single();
-              subjectUuid = newSubjectResp['id'] as String?;
             }
           } catch (e) {
             debugPrint('Failed to ensure subject exists in Supabase: $e');
@@ -265,9 +296,15 @@ class SyncService {
         }
 
         // Set the resolved UUIDs
-        if (subjectUuid != null) {
-          payload['subject_id'] = subjectUuid;
+        // If we could not resolve a subject UUID, skip syncing this offering to avoid
+        // accidentally creating or attaching to an unknown subject.
+        if (subjectUuid == null) {
+          debugPrint(
+            '⚠️ Skipping subject_offerings sync for local_id=$localId – subject not found in Supabase.',
+          );
+          continue;
         }
+        payload['subject_id'] = subjectUuid;
         if (serverTermId != null) {
           payload['term_id'] = serverTermId;
         }
@@ -461,30 +498,41 @@ class SyncService {
         // Keep local_session_id - Supabase schema requires both session_id (UUID) and local_session_id (int4)
       }
 
-      data.add(payload);
+      // Separate into inserts and updates based on supabaseId
+      if (supabaseId != null && supabaseId.isNotEmpty) {
+        // This is an UPDATE - add the supabaseId to identify the record
+        payload['id'] = supabaseId;
+        toUpdate.add(payload);
+      } else {
+        // This is an INSERT
+        toInsert.add(payload);
+      }
     }
 
     debugPrint(
-      '🚀 Attempting to upload ${data.length} records to "$tableName"...',
+      '🚀 Syncing "$tableName": ${toInsert.length} inserts, ${toUpdate.length} updates',
     );
 
     try {
-      final response = await supabase
-          .from(tableName)
-          .insert(data)
-          .select('id, local_id');
+      // Handle INSERTs (new records)
+      if (toInsert.isNotEmpty) {
+        final insertResponse = await supabase
+            .from(tableName)
+            .insert(toInsert)
+            .select('id, local_id');
 
-      // If insert succeeds, mark as synced and store UUIDs
-      final ids = unsynced.map((row) => (row as dynamic).id as int).toList();
-      await markSynced(ids);
+        // Mark as synced and store UUIDs for new records
+        final newIds = toInsert.map((p) => p['local_id'] as int).toList();
+        await markSynced(newIds);
 
-      // Store UUIDs in local database if available
-      if (response is List) {
-        for (final item in response) {
+        // Store UUIDs in local database
+        for (final item in insertResponse) {
           final localId = item['local_id'] as int?;
           final uuid = item['id'] as String?;
 
           if (localId != null && uuid != null) {
+            // Note: Students table doesn't have supabaseId column,
+            // so we don't store it. We'll query by local_id on next sync.
             if (tableName == 'subject_offerings') {
               await (db.update(db.subjects)..where((t) => t.id.equals(localId)))
                   .write(SubjectsCompanion(supabaseId: Value(uuid)));
@@ -504,16 +552,39 @@ class SyncService {
                     ..where((t) => t.id.equals(localId)))
                   .write(SubjectStudentsCompanion(supabaseId: Value(uuid)));
             }
+            // Students table: No need to store UUID since we query by local_id
           }
         }
       }
 
+      // Handle UPDATEs (existing records that were modified)
+      if (toUpdate.isNotEmpty) {
+        for (final payload in toUpdate) {
+          final supabaseId = payload['id'] as String;
+          final localId = payload['local_id'] as int;
+
+          // Remove 'id' from payload for update (Supabase uses it to identify)
+          final updatePayload = Map<String, dynamic>.from(payload);
+          updatePayload.remove('id');
+
+          await supabase
+              .from(tableName)
+              .update(updatePayload)
+              .eq('id', supabaseId);
+
+          // Mark this local record as synced again
+          final ids = [localId];
+          await markSynced(ids);
+        }
+      }
+
       debugPrint(
-        '✅ Successfully uploaded ${data.length} records to "$tableName".',
+        '✅ Successfully synced "$tableName": ${toInsert.length} inserts, ${toUpdate.length} updates',
       );
     } catch (e) {
-      debugPrint('❌ FAILED to upload to "$tableName".');
+      debugPrint('❌ FAILED to sync "$tableName".');
       debugPrint('⚠️ Error details: $e');
+      rethrow;
     }
   }
 
@@ -938,17 +1009,18 @@ class SyncService {
 
         Subject? local;
 
-        if (remoteLocalId != null) {
+        // 1️⃣ Top priority: match by local.supabaseId == remote subject_offerings.id
+        if (supabaseUuid != null) {
+          local = await (db.select(
+            db.subjects,
+          )..where((t) => t.supabaseId.equals(supabaseUuid))).getSingleOrNull();
+        }
+
+        // 2️⃣ Fallback: match by stored local_id if no supabase match
+        if (local == null && remoteLocalId != null) {
           local = await (db.select(
             db.subjects,
           )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
-        }
-
-        if (local == null && subjectCode != null) {
-          final subjectRows = await (db.select(
-            db.subjects,
-          )..where((t) => t.subjectCode.equals(subjectCode))).get();
-          local = subjectRows.isEmpty ? null : subjectRows.first;
         }
 
         // find termId locally using term_uuid

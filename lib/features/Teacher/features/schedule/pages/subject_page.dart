@@ -99,6 +99,9 @@ class _SubjectPageState extends State<SubjectPage> {
     setState(() {
       _subjectsData = subjects.map((e) => e.toJson()).toList();
     });
+    debugPrint(
+      'Loaded ${subjects.length} subjects: ${subjects.map((s) => '${s.id}:${s.subjectCode}-${s.section}').join(', ')}',
+    );
     if (_subjectsData.isNotEmpty && _scheduleData.isNotEmpty) {
       await combineData();
     }

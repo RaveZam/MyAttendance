@@ -26,6 +26,9 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    // Log local data when settings is opened to help debug sync state
+    AppDatabase.instance.logAllStudents();
+    AppDatabase.instance.logAllSubjectsAndOfferings();
     _loadUserSettings();
     _checkSyncStatus();
   }

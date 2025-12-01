@@ -120,6 +120,7 @@ class _ClassCardState extends State<ClassCard> {
               yearLevel: widget.yearLevel,
               section: widget.section,
               profId: widget.profId,
+              onSubjectUpdated: widget.reloadStates,
             ),
           ),
         );

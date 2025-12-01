@@ -20,6 +20,7 @@ class ClassDetailsPage extends StatefulWidget {
   final String section;
   final String profId;
   final Iterable sessions;
+  final VoidCallback? onSubjectUpdated;
 
   const ClassDetailsPage({
     super.key,
@@ -35,6 +36,7 @@ class ClassDetailsPage extends StatefulWidget {
     required this.section,
     required this.profId,
     required this.sessions,
+    this.onSubjectUpdated,
   });
 
   @override
@@ -50,6 +52,18 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
   int activeSessionID = 0;
   int _sessionsCount = 0;
 
+  late String _subjectName;
+  late String _courseCode;
+  late String _room;
+  late String _startTime;
+  late String _endTime;
+  late String _semester;
+  late String _yearLevel;
+  late String _section;
+  late String _profId;
+  late List<Map<String, dynamic>> _scheduleSessions;
+  int? _subjectTermId;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +71,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
 
     getAllStudents();
     _checkForOngoingSession();
+    _initializeSubjectState();
   }
 
   @override
@@ -108,7 +123,7 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     await _loadSessionsCount();
   }
 
-  void getAllStudents() async {
+  Future<void> getAllStudents() async {
     final studentsData = await AppDatabase.instance.getStudentsInSubject(
       int.parse(widget.classID),
     );
@@ -116,6 +131,29 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     setState(() {
       students = studentsData.map((student) => student.toJson()).toList();
     });
+  }
+
+  void _initializeSubjectState() {
+    _subjectName = widget.subject;
+    _courseCode = widget.courseCode;
+    _room = widget.room;
+    _startTime = widget.startTime;
+    _endTime = widget.endTime;
+    _semester = widget.semester;
+    _yearLevel = widget.yearLevel;
+    _section = widget.section;
+    _profId = widget.profId;
+    _subjectTermId = null;
+    _scheduleSessions = widget.sessions
+        .map(
+          (session) => {
+            'day': session['day'] ?? '',
+            'startTime': session['startTime'] ?? '',
+            'endTime': session['endTime'] ?? '',
+            'room': session['room'] ?? '',
+          },
+        )
+        .toList();
   }
 
   Future<void> _loadSessionsCount() async {
@@ -138,6 +176,56 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
     }
   }
 
+  Future<void> _refreshSubjectFromDb() async {
+    final subjectId = int.parse(widget.classID);
+    final subjects = await db.getSubjectByID(subjectId);
+    if (subjects.isEmpty) return;
+
+    final subject = subjects.first;
+    final term = await db.getTermById(subject.termId);
+    final termLabel = term != null
+        ? '${term.term} ${term.startYear}-${term.endYear}'
+        : _semester;
+
+    final schedules = await db.getSchedulesBySubjectId(subject.id);
+    final scheduleMaps = schedules
+        .map(
+          (s) => {
+            'day': s.day,
+            'startTime': s.startTime,
+            'endTime': s.endTime,
+            'room': s.room ?? '',
+          },
+        )
+        .toList();
+
+    if (!mounted) return;
+    setState(() {
+      _subjectName = subject.subjectName;
+      _courseCode = subject.subjectCode;
+      _yearLevel = subject.yearLevel;
+      _section = subject.section;
+      _profId = subject.profId;
+      _semester = termLabel;
+      _subjectTermId = subject.termId;
+
+      if (scheduleMaps.isNotEmpty) {
+        final firstSchedule = scheduleMaps.first;
+        _room = firstSchedule['room'] ?? _room;
+        _startTime = firstSchedule['startTime'] ?? _startTime;
+        _endTime = firstSchedule['endTime'] ?? _endTime;
+      }
+      _scheduleSessions = scheduleMaps;
+    });
+  }
+
+  Future<void> _handleSubjectUpdated() async {
+    await _refreshSubjectFromDb();
+    await getAllStudents();
+    await _refreshSessionState();
+    widget.onSubjectUpdated?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -147,36 +235,30 @@ class _ClassDetailsPageState extends State<ClassDetailsPage>
         subjectId: widget.classID,
         subjectData: {
           'id': int.parse(widget.classID),
-          'subjectName': widget.subject,
-          'subjectCode': widget.courseCode,
-          'yearLevel': widget.yearLevel,
-          'section': widget.section,
+          'subjectName': _subjectName,
+          'subjectCode': _courseCode,
+          'yearLevel': _yearLevel,
+          'section': _section,
+          'profId': _profId,
+          'termId': _subjectTermId,
         },
-        scheduleData: widget.sessions
-            .map(
-              (session) => {
-                'day': session['day'] ?? '',
-                'startTime': session['startTime'] ?? '',
-                'endTime': session['endTime'] ?? '',
-                'room': session['room'] ?? '',
-              },
-            )
-            .toList(),
+        scheduleData: _scheduleSessions,
+        onSubjectUpdated: _handleSubjectUpdated,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             ClassDetailsInfoCard(
-              subject: widget.subject,
-              courseCode: widget.courseCode,
-              room: widget.room,
-              startTime: widget.startTime,
-              endTime: widget.endTime,
-              semester: widget.semester,
-              yearLevel: widget.yearLevel,
-              section: widget.section,
-              profId: widget.profId,
-              sessions: widget.sessions,
+              subject: _subjectName,
+              courseCode: _courseCode,
+              room: _room,
+              startTime: _startTime,
+              endTime: _endTime,
+              semester: _semester,
+              yearLevel: _yearLevel,
+              section: _section,
+              profId: _profId,
+              sessions: _scheduleSessions,
             ),
             const SizedBox(height: 12),
             _QuickActionsSection(
@@ -202,11 +284,13 @@ class _ClassDetailsAppBar extends StatelessWidget
   final String subjectId;
   final Map<String, dynamic> subjectData;
   final List<Map<String, dynamic>> scheduleData;
+  final VoidCallback onSubjectUpdated;
 
   const _ClassDetailsAppBar({
     required this.subjectId,
     required this.subjectData,
     required this.scheduleData,
+    required this.onSubjectUpdated,
   });
 
   @override
@@ -283,8 +367,7 @@ class _ClassDetailsAppBar extends StatelessWidget
       ),
     ).then((result) {
       if (result == true) {
-        // Navigate back to refresh the page
-        Navigator.pop(context, true);
+        onSubjectUpdated();
       }
     });
   }

@@ -491,6 +491,8 @@ class _StudentPageState extends State<StudentPage> {
                     return _StudentCard(
                       student: StudentData(
                         name: '${student['firstName']} ${student['lastName']}',
+                        firstName: student['firstName']?.toString() ?? '',
+                        lastName: student['lastName']?.toString() ?? '',
                         id: student['studentId'],
                         present: stats.present,
                         absent: stats.absent,
@@ -523,11 +525,8 @@ class _StudentPageState extends State<StudentPage> {
                           if (originalIndex != -1) {
                             students[originalIndex] = {
                               'id': updatedStudent.databaseId!,
-                              'firstName': updatedStudent.name.split(' ').first,
-                              'lastName': updatedStudent.name
-                                  .split(' ')
-                                  .skip(1)
-                                  .join(' '),
+                              'firstName': updatedStudent.firstName,
+                              'lastName': updatedStudent.lastName,
                               'studentId': updatedStudent.id,
                             };
                             // Refresh the filtered list
@@ -798,7 +797,10 @@ class _StudentCard extends StatelessWidget {
 
     if (confirm == true && student.databaseId != null) {
       try {
-        await AppDatabase.instance.deleteStudent(student.databaseId!);
+        // Delete the student and all related data (enrollments, attendance)
+        await AppDatabase.instance.deleteStudentWithRelations(
+          student.databaseId!,
+        );
         onStudentDelete(student.databaseId!);
 
         if (context.mounted) {
@@ -1001,7 +1003,14 @@ class _StudentCard extends StatelessWidget {
 }
 
 class StudentData {
+  /// Full display name (first + last), mainly for UI.
   final String name;
+
+  /// Separate first name and last name, so we don't have to guess
+  /// when editing and saving back to the database.
+  final String firstName;
+  final String lastName;
+
   final String id;
   final int present;
   final int absent;
@@ -1013,6 +1022,8 @@ class StudentData {
 
   StudentData({
     required this.name,
+    required this.firstName,
+    required this.lastName,
     required this.id,
     required this.present,
     required this.absent,
@@ -1047,14 +1058,10 @@ class _StudentEditPopupState extends State<StudentEditPopup> {
   @override
   void initState() {
     super.initState();
-    // Split the name into first and last name
-    final nameParts = widget.student.name.split(' ');
     _firstNameController = TextEditingController(
-      text: nameParts.isNotEmpty ? nameParts[0] : '',
+      text: widget.student.firstName,
     );
-    _lastNameController = TextEditingController(
-      text: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
-    );
+    _lastNameController = TextEditingController(text: widget.student.lastName);
     _studentIdController = TextEditingController(text: widget.student.id);
   }
 
@@ -1193,6 +1200,8 @@ class _StudentEditPopupState extends State<StudentEditPopup> {
         final updatedStudent = StudentData(
           name:
               '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
           id: _studentIdController.text.trim(),
           present: widget.student.present,
           absent: widget.student.absent,

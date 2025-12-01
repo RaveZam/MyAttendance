@@ -33,14 +33,15 @@ class ClassList extends StatelessWidget {
         if (itemTermId == null) continue;
         if (itemTermId != selectedTermId) continue;
       }
-      final subject = data['subjectData']['subjectName'] ?? '';
+      final subjectName =
+          data['subjectData']?['subjectName']?.toString() ?? '';
       final classID = data['id']?.toString() ?? '';
-      if (subject.isNotEmpty) {
-        if (!classesBySubject.containsKey(subject)) {
-          classesBySubject[subject] = [];
-        }
-        classesBySubject[subject]!.add({'id': classID, ...data});
-      }
+      if (subjectName.isEmpty) continue;
+      final subjectEntryId = data['subjectData']?['id']?.toString() ??
+          data['id']?.toString() ??
+          '$subjectName-${data['section'] ?? ''}';
+      classesBySubject.putIfAbsent(subjectEntryId, () => []);
+      classesBySubject[subjectEntryId]!.add({'id': classID, ...data});
     }
 
     if (classesBySubject.isEmpty) {
@@ -70,16 +71,21 @@ class ClassList extends StatelessWidget {
 
       final Map<String, List<Map<String, dynamic>>> subjectsMap = {};
       for (final data in items) {
-        final subject = data['subjectData']?['subjectName']?.toString() ?? '';
+        final subjectName =
+            data['subjectData']?['subjectName']?.toString() ?? '';
+        if (subjectName.isEmpty) continue;
         if (searchQuery != null && searchQuery!.isNotEmpty) {
-          if (!subject.toLowerCase().contains(searchQuery!.toLowerCase()))
+          if (!subjectName.toLowerCase().contains(searchQuery!.toLowerCase()))
             continue;
         }
         final classID = data['id']?.toString() ?? '';
-        if (subject.isNotEmpty) {
-          if (!subjectsMap.containsKey(subject)) subjectsMap[subject] = [];
-          subjectsMap[subject]!.add({'id': classID, ...data});
+        final subjectEntryId = data['subjectData']?['id']?.toString() ??
+            data['id']?.toString() ??
+            '$subjectName-${data['section'] ?? ''}';
+        if (!subjectsMap.containsKey(subjectEntryId)) {
+          subjectsMap[subjectEntryId] = [];
         }
+        subjectsMap[subjectEntryId]!.add({'id': classID, ...data});
       }
 
       if (subjectsMap.isEmpty)
@@ -99,7 +105,6 @@ class ClassList extends StatelessWidget {
       );
 
       for (final entry in subjectsMap.entries) {
-        final subject = entry.key;
         final classSessions = entry.value;
         final uniqueSessions = <String, Map<String, dynamic>>{};
         for (final s in classSessions) {
@@ -129,9 +134,11 @@ class ClassList extends StatelessWidget {
             firstSession['termData']['startYear']?.toString() ?? "0";
         final endYear = firstSession['termData']['endYear']?.toString() ?? "0";
 
+        final subjectName =
+            firstSession['subjectData']['subjectName']?.toString() ?? '';
         widgets.add(
           ClassCard(
-            subject: subject,
+            subject: subjectName,
             classID: classSessions.first['id']?.toString() ?? '',
             courseCode: courseCode,
             sessions: sessions,

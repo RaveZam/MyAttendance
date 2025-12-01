@@ -249,6 +249,49 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Student>> getAllStudents() => select(students).get();
 
+  Future<void> logAllStudents() async {
+    final allStudents = await getAllStudents();
+
+    if (allStudents.isEmpty) {
+      print('[AppDatabase] No students found in the local database.');
+      return;
+    }
+
+    print('[AppDatabase] Students (${allStudents.length}):');
+    for (final student in allStudents) {
+      final fullName = '${student.firstName} ${student.lastName}'.trim();
+      print(
+        ' - localId=${student.id} | name=$fullName | studentId=${student.studentId} | synced=${student.synced}',
+      );
+    }
+  }
+
+  /// Logs all local subjects and their relationship to Supabase subject_offerings.
+  Future<void> logAllSubjectsAndOfferings() async {
+    final allSubjects = await getAllSubjects();
+
+    if (allSubjects.isEmpty) {
+      print('[AppDatabase] No subjects found in the local database.');
+      return;
+    }
+
+    print('[AppDatabase] Subjects (${allSubjects.length}):');
+    for (final subject in allSubjects) {
+      print(
+        ' - localId=${subject.id} '
+        '| code=${subject.subjectCode} '
+        '| name=${subject.subjectName} '
+        '| yearLevel=${subject.yearLevel} '
+        '| section=${subject.section} '
+        '| termId=${subject.termId} '
+        '| profId=${subject.profId} '
+        '| supabaseOfferingId=${subject.supabaseId ?? 'null'} '
+        '| synced=${subject.synced} '
+        '| lastModified=${subject.lastModified.toIso8601String()}',
+      );
+    }
+  }
+
   Future<void> updateStudent(
     int id,
     String firstName,
@@ -261,8 +304,38 @@ class AppDatabase extends _$AppDatabase {
         lastName: Value(lastName),
         studentId: Value(studentId),
         lastModified: Value(DateTime.now()),
+        synced: Value(false), // Mark as unsynced after update
       ),
     );
+  }
+
+  /// Deletes a student and all related local data:
+  /// - Removes enrollments from `subjectStudents`
+  /// - Removes attendance records matching the student's `studentId`
+  /// - Deletes the student row itself
+  Future<void> deleteStudentWithRelations(int id) async {
+    await transaction(() async {
+      // Load the student first so we can match attendance by string studentId
+      final student = await (select(
+        students,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
+
+      if (student != null) {
+        // Delete attendance records for this student (studentId is stored as text)
+        await (delete(
+          attendance,
+        )..where((tbl) => tbl.studentId.equals(student.studentId))).go();
+      }
+
+      // Explicitly delete subject-student relationships for this student
+      // (in addition to the ON DELETE CASCADE, to be safe)
+      await (delete(
+        subjectStudents,
+      )..where((t) => t.studentId.equals(id))).go();
+
+      // Finally, delete the student row itself
+      await deleteStudent(id);
+    });
   }
 
   Future<void> deleteStudent(int id) async {
@@ -298,6 +371,7 @@ class AppDatabase extends _$AppDatabase {
         section: Value(section),
         termId: Value(termId),
         lastModified: Value(DateTime.now()),
+        synced: Value(false), // Mark as unsynced after update
       ),
     );
   }
@@ -323,6 +397,7 @@ class AppDatabase extends _$AppDatabase {
         status: Value('ended'),
         endTime: Value(DateTime.now()),
         lastModified: Value(DateTime.now()),
+        synced: Value(false), // Mark as unsynced after update
       ),
     );
   }
