@@ -27,6 +27,7 @@ class _StudentQrState extends State<StudentQr> {
         "first_name": _currentUser?.userMetadata?['first_name'],
         "last_name": _currentUser?.userMetadata?['last_name'],
         "student_id": _currentUser?.userMetadata?['student_id'],
+        "uuid": _currentUser?.id,
       };
     });
   }
