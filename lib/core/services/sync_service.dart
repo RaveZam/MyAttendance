@@ -936,6 +936,7 @@ class SyncService {
       final Map<int, int> subjectIdMap = {};
       final Set<int> profSubjectLocalIds = {};
       final Set<int> sessionLocalIds = {};
+      final Set<String> profSubjectOfferingUuids = {};
 
       // 1️⃣ Load Terms
       final terms = await supabase.from('terms').select();
@@ -964,76 +965,7 @@ class SyncService {
         }
       }
 
-      // 2️⃣ Load Students
-      final students = await supabase.from('students').select();
-      for (final s in students) {
-        final remoteLocalId = s['local_id'] as int?;
-        Student? local;
-
-        if (remoteLocalId != null) {
-          local = await (db.select(
-            db.students,
-          )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
-        }
-
-        if (local == null) {
-          final studentRows = await (db.select(
-            db.students,
-          )..where((t) => t.studentId.equals(s['student_id']))).get();
-          local = studentRows.isEmpty ? null : studentRows.first;
-        }
-
-        final serverModified = _parseDateTime(s['last_modified']);
-        final serverCreated = _parseDateTime(s['created_at']);
-
-        if (local == null) {
-          await db
-              .into(db.students)
-              .insert(
-                StudentsCompanion(
-                  id: remoteLocalId != null
-                      ? Value(remoteLocalId)
-                      : const Value.absent(),
-                  firstName: Value(s['first_name'] ?? ''),
-                  lastName: Value(s['last_name'] ?? ''),
-                  studentId: Value(s['student_id'] ?? ''),
-                  supabaseId: Value(s['auth_id'] as String?),
-                  createdAt: Value(serverCreated ?? DateTime.now()),
-                  lastModified: Value(serverModified ?? DateTime.now()),
-                  synced: const Value(true),
-                ),
-                mode: InsertMode.insertOrReplace,
-              );
-
-          if (remoteLocalId != null) {
-            studentIdMap[remoteLocalId] = remoteLocalId;
-          }
-        } else {
-          final resolvedId = local.id;
-          if (remoteLocalId != null) {
-            studentIdMap[remoteLocalId] = resolvedId;
-          }
-
-          if (serverModified != null &&
-              serverModified.isAfter(local.lastModified)) {
-            await (db.update(
-              db.students,
-            )..where((t) => t.id.equals(resolvedId))).write(
-              StudentsCompanion(
-                firstName: Value(s['first_name'] ?? local.firstName),
-                lastName: Value(s['last_name'] ?? local.lastName),
-                lastModified: Value(serverModified),
-                supabaseId: Value(
-                  (s['auth_id'] as String?) ?? local.supabaseId,
-                ),
-                synced: const Value(true),
-              ),
-            );
-          }
-        }
-      }
-
-      // 3️⃣ Load Subject Offerings for current prof (join with subjects table)
+      // 2️⃣ Load Subject Offerings for current prof (join with subjects table)
       final subjectOfferingsResponse = await supabase
           .from('subject_offerings')
           .select('*, subjects(code, name)')
@@ -1044,6 +976,9 @@ class SyncService {
       for (final so in subjectOfferings) {
         final remoteLocalId = so['local_id'] as int?;
         final supabaseUuid = so['id'] as String?;
+        if (supabaseUuid != null) {
+          profSubjectOfferingUuids.add(supabaseUuid);
+        }
         final subjectData = so['subjects'] as Map<String, dynamic>?;
         final subjectCode = subjectData?['code'] as String?;
         final subjectName = subjectData?['name'] as String?;
@@ -1180,6 +1115,99 @@ class SyncService {
             await (db.update(db.subjects)
                   ..where((t) => t.id.equals(resolvedId)))
                 .write(SubjectsCompanion(supabaseId: Value(supabaseUuid)));
+          }
+        }
+      }
+
+      // 3️⃣ Load Students – only those linked to this prof's subject offerings
+      final students = <dynamic>[];
+      if (profSubjectOfferingUuids.isNotEmpty) {
+        // Get all student UUIDs that are enrolled in this prof's subject offerings
+        final subjectStudentRefs = await supabase
+            .from('subject_students')
+            .select('student_id')
+            .inFilter('subject_id', profSubjectOfferingUuids.toList());
+
+        final Set<String> studentUuids = {};
+        for (final ref in subjectStudentRefs) {
+          final sid = ref['student_id'] as String?;
+          if (sid != null) {
+            studentUuids.add(sid);
+          }
+        }
+
+        if (studentUuids.isNotEmpty) {
+          final fetchedStudents = await supabase
+              .from('students')
+              .select()
+              .inFilter('id', studentUuids.toList());
+          students.addAll(fetchedStudents as List);
+        }
+      }
+
+      for (final s in students) {
+        final remoteLocalId = s['local_id'] as int?;
+        Student? local;
+
+        if (remoteLocalId != null) {
+          local = await (db.select(
+            db.students,
+          )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
+        }
+
+        if (local == null) {
+          final studentRows = await (db.select(
+            db.students,
+          )..where((t) => t.studentId.equals(s['student_id']))).get();
+          local = studentRows.isEmpty ? null : studentRows.first;
+        }
+
+        final serverModified = _parseDateTime(s['last_modified']);
+        final serverCreated = _parseDateTime(s['created_at']);
+
+        if (local == null) {
+          await db
+              .into(db.students)
+              .insert(
+                StudentsCompanion(
+                  id: remoteLocalId != null
+                      ? Value(remoteLocalId)
+                      : const Value.absent(),
+                  firstName: Value(s['first_name'] ?? ''),
+                  lastName: Value(s['last_name'] ?? ''),
+                  studentId: Value(s['student_id'] ?? ''),
+                  supabaseId: Value(s['auth_id'] as String?),
+                  createdAt: Value(serverCreated ?? DateTime.now()),
+                  lastModified: Value(serverModified ?? DateTime.now()),
+                  synced: const Value(true),
+                ),
+                mode: InsertMode.insertOrReplace,
+              );
+
+          if (remoteLocalId != null) {
+            studentIdMap[remoteLocalId] = remoteLocalId;
+          }
+        } else {
+          final resolvedId = local.id;
+          if (remoteLocalId != null) {
+            studentIdMap[remoteLocalId] = resolvedId;
+          }
+
+          if (serverModified != null &&
+              serverModified.isAfter(local.lastModified)) {
+            await (db.update(
+              db.students,
+            )..where((t) => t.id.equals(resolvedId))).write(
+              StudentsCompanion(
+                firstName: Value(s['first_name'] ?? local.firstName),
+                lastName: Value(s['last_name'] ?? local.lastName),
+                lastModified: Value(serverModified),
+                supabaseId: Value(
+                  (s['auth_id'] as String?) ?? local.supabaseId,
+                ),
+                synced: const Value(true),
+              ),
+            );
           }
         }
       }
@@ -1392,9 +1420,11 @@ class SyncService {
         }
       }
 
+      // 7️⃣ Load Subject-Student relationships only for this prof's subject offerings
       final subjectStudentsRemote = await supabase
           .from('subject_students')
-          .select();
+          .select()
+          .inFilter('subject_id', profSubjectOfferingUuids.toList());
       for (final entry in subjectStudentsRemote) {
         final subjectLocalId = entry['local_subject_id'] as int?;
         final studentLocalId = entry['local_student_id'] as int?;
