@@ -127,6 +127,9 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     final authService = AuthService();
     try {
+      // Clear all database data before signing out
+      await AppDatabase.instance.clearAllDatabaseData();
+      
       final success = await authService.signOut();
       if (mounted && success) {
         // Ensure the confirmation dialog is closed

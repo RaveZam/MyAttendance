@@ -439,6 +439,21 @@ class AppDatabase extends _$AppDatabase {
     await deleteAllSubjects();
   }
 
+  /// Clears all data from all tables in the database.
+  /// This is used when signing out to remove all offline data.
+  Future<void> clearAllDatabaseData() async {
+    await transaction(() async {
+      // Delete all data from all tables
+      // Order matters due to foreign key constraints
+      await delete(attendance).go();
+      await delete(sessions).go();
+      await delete(schedules).go();
+      await delete(subjectStudents).go();
+      await delete(subjects).go();
+      await delete(students).go();
+    });
+  }
+
   Future<void> clearAttendance() => delete(attendance).go();
 
   Future<void> clearSessions() => delete(sessions).go();
