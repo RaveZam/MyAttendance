@@ -58,6 +58,7 @@ class SyncService {
         'first_name': s.firstName,
         'last_name': s.lastName,
         'student_id': s.studentId,
+        'auth_id': (s as dynamic).supabaseId,
         'created_at': s.createdAt.toIso8601String(),
         'last_modified': s.lastModified.toIso8601String(),
       },
@@ -164,16 +165,13 @@ class SyncService {
       },
     );
 
-    // Wait for all sync operations to complete
-    await Future.wait([
-      // termsFuture, // Skipped - terms are auto-created and never edited
-      studentsFuture,
-      subjectsFuture,
-      schedulesFuture,
-      sessionsFuture,
-      attendanceFuture,
-      subjectStudentsFuture,
-    ]);
+    // Run sequentially for tables with dependencies
+    await studentsFuture;
+    await subjectsFuture;
+    await schedulesFuture;
+    await sessionsFuture;
+    await attendanceFuture;
+    await subjectStudentsFuture;
 
     debugPrint('✅ Upload complete!');
   }
@@ -209,6 +207,20 @@ class SyncService {
     for (final row in unsynced) {
       final payload = Map<String, dynamic>.from(mapRow(row));
       final localId = (row as dynamic).id as int;
+
+      if (tableName == 'subject_students') {
+        final localStudentId = (row as dynamic).studentId as int?;
+        final resolvedStudentUuid = localStudentId == null
+            ? null
+            : await _getStudentSupabaseId(localStudentId);
+        if (resolvedStudentUuid == null) {
+          debugPrint(
+            '⚠️ Skipping subject_students sync for local_id=$localId – student missing supabase_id.',
+          );
+          continue;
+        }
+        payload['student_id'] = resolvedStudentUuid;
+      }
 
       // Check if this record has a supabaseId (already synced before = UPDATE)
       String? supabaseId;
@@ -595,6 +607,31 @@ class SyncService {
     return null;
   }
 
+  Future<String?> _getStudentSupabaseId(int localStudentId) async {
+    try {
+      final student = await (db.select(
+        db.students,
+      )..where((t) => t.id.equals(localStudentId))).getSingleOrNull();
+      final authId = student?.supabaseId;
+      if (authId == null || authId.isEmpty) return null;
+
+      final remoteStudent = await supabase
+          .from('students')
+          .select('id')
+          .eq('auth_id', authId)
+          .maybeSingle();
+
+      if (remoteStudent != null && remoteStudent.containsKey('id')) {
+        return remoteStudent['id'] as String?;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error resolving supabase_id for student $localStudentId: $e');
+      return null;
+    }
+  }
+
   /// Get the latest last_modified timestamp from local database for a table
   Future<DateTime?> _getLocalLatestModified(String tableName) async {
     try {
@@ -960,6 +997,7 @@ class SyncService {
                   firstName: Value(s['first_name'] ?? ''),
                   lastName: Value(s['last_name'] ?? ''),
                   studentId: Value(s['student_id'] ?? ''),
+                  supabaseId: Value(s['auth_id'] as String?),
                   createdAt: Value(serverCreated ?? DateTime.now()),
                   lastModified: Value(serverModified ?? DateTime.now()),
                   synced: const Value(true),
@@ -985,6 +1023,9 @@ class SyncService {
                 firstName: Value(s['first_name'] ?? local.firstName),
                 lastName: Value(s['last_name'] ?? local.lastName),
                 lastModified: Value(serverModified),
+                supabaseId: Value(
+                  (s['auth_id'] as String?) ?? local.supabaseId,
+                ),
                 synced: const Value(true),
               ),
             );

@@ -81,13 +81,16 @@ class StudentQrReaderState extends State<StudentQrReader> {
                 final firstName = data['first_name']?.toString();
                 final lastName = data['last_name']?.toString();
                 final studentId = data['student_id']?.toString();
+                final supabaseId = data['uuid']?.toString();
 
                 if (firstName == null ||
                     lastName == null ||
                     studentId == null ||
+                    supabaseId == null ||
                     firstName.isEmpty ||
                     lastName.isEmpty ||
-                    studentId.isEmpty) {
+                    studentId.isEmpty ||
+                    supabaseId.isEmpty) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -113,6 +116,7 @@ class StudentQrReaderState extends State<StudentQrReader> {
                   firstName: firstName,
                   lastName: lastName,
                   studentId: studentId,
+                  supabaseId: supabaseId,
                 );
 
                 // Reset overlay after delay
@@ -184,12 +188,14 @@ class StudentQrReaderState extends State<StudentQrReader> {
     required String firstName,
     required String lastName,
     required String studentId,
+    required String supabaseId,
   }) async {
     try {
       // Trim and validate inputs
       final trimmedFirstName = firstName.trim();
       final trimmedLastName = lastName.trim();
       final trimmedStudentId = studentId.trim();
+      final trimmedSupabaseId = supabaseId.trim();
 
       debugPrint(
         "[StudentQrReader] attempting to insert student "
@@ -199,7 +205,8 @@ class StudentQrReaderState extends State<StudentQrReader> {
       // Validate that all fields are not empty
       if (trimmedFirstName.isEmpty ||
           trimmedLastName.isEmpty ||
-          trimmedStudentId.isEmpty) {
+          trimmedStudentId.isEmpty ||
+          trimmedSupabaseId.isEmpty) {
         debugPrint("[StudentQrReader] validation failed: empty field(s)");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -266,6 +273,7 @@ class StudentQrReaderState extends State<StudentQrReader> {
         firstName: drift.Value(trimmedFirstName),
         lastName: drift.Value(trimmedLastName),
         studentId: drift.Value(trimmedStudentId),
+        supabaseId: drift.Value(trimmedSupabaseId),
         synced: drift.Value(false),
       );
 

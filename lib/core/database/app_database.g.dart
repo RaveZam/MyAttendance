@@ -1654,6 +1654,17 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _supabaseIdMeta = const VerificationMeta(
+    'supabaseId',
+  );
+  @override
+  late final GeneratedColumn<String> supabaseId = GeneratedColumn<String>(
+    'supabase_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
   @override
   late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
@@ -1696,6 +1707,7 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
     firstName,
     lastName,
     studentId,
+    supabaseId,
     synced,
     createdAt,
     lastModified,
@@ -1738,6 +1750,12 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
       );
     } else if (isInserting) {
       context.missing(_studentIdMeta);
+    }
+    if (data.containsKey('supabase_id')) {
+      context.handle(
+        _supabaseIdMeta,
+        supabaseId.isAcceptableOrUnknown(data['supabase_id']!, _supabaseIdMeta),
+      );
     }
     if (data.containsKey('synced')) {
       context.handle(
@@ -1787,6 +1805,10 @@ class $StudentsTable extends Students with TableInfo<$StudentsTable, Student> {
         DriftSqlType.string,
         data['${effectivePrefix}student_id'],
       )!,
+      supabaseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}supabase_id'],
+      ),
       synced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}synced'],
@@ -1813,6 +1835,7 @@ class Student extends DataClass implements Insertable<Student> {
   final String firstName;
   final String lastName;
   final String studentId;
+  final String? supabaseId;
   final bool synced;
   final DateTime createdAt;
   final DateTime lastModified;
@@ -1821,6 +1844,7 @@ class Student extends DataClass implements Insertable<Student> {
     required this.firstName,
     required this.lastName,
     required this.studentId,
+    this.supabaseId,
     required this.synced,
     required this.createdAt,
     required this.lastModified,
@@ -1832,6 +1856,9 @@ class Student extends DataClass implements Insertable<Student> {
     map['first_name'] = Variable<String>(firstName);
     map['last_name'] = Variable<String>(lastName);
     map['student_id'] = Variable<String>(studentId);
+    if (!nullToAbsent || supabaseId != null) {
+      map['supabase_id'] = Variable<String>(supabaseId);
+    }
     map['synced'] = Variable<bool>(synced);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_modified'] = Variable<DateTime>(lastModified);
@@ -1844,6 +1871,9 @@ class Student extends DataClass implements Insertable<Student> {
       firstName: Value(firstName),
       lastName: Value(lastName),
       studentId: Value(studentId),
+      supabaseId: supabaseId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supabaseId),
       synced: Value(synced),
       createdAt: Value(createdAt),
       lastModified: Value(lastModified),
@@ -1860,6 +1890,7 @@ class Student extends DataClass implements Insertable<Student> {
       firstName: serializer.fromJson<String>(json['firstName']),
       lastName: serializer.fromJson<String>(json['lastName']),
       studentId: serializer.fromJson<String>(json['studentId']),
+      supabaseId: serializer.fromJson<String?>(json['supabaseId']),
       synced: serializer.fromJson<bool>(json['synced']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastModified: serializer.fromJson<DateTime>(json['lastModified']),
@@ -1873,6 +1904,7 @@ class Student extends DataClass implements Insertable<Student> {
       'firstName': serializer.toJson<String>(firstName),
       'lastName': serializer.toJson<String>(lastName),
       'studentId': serializer.toJson<String>(studentId),
+      'supabaseId': serializer.toJson<String?>(supabaseId),
       'synced': serializer.toJson<bool>(synced),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastModified': serializer.toJson<DateTime>(lastModified),
@@ -1884,6 +1916,7 @@ class Student extends DataClass implements Insertable<Student> {
     String? firstName,
     String? lastName,
     String? studentId,
+    Value<String?> supabaseId = const Value.absent(),
     bool? synced,
     DateTime? createdAt,
     DateTime? lastModified,
@@ -1892,6 +1925,7 @@ class Student extends DataClass implements Insertable<Student> {
     firstName: firstName ?? this.firstName,
     lastName: lastName ?? this.lastName,
     studentId: studentId ?? this.studentId,
+    supabaseId: supabaseId.present ? supabaseId.value : this.supabaseId,
     synced: synced ?? this.synced,
     createdAt: createdAt ?? this.createdAt,
     lastModified: lastModified ?? this.lastModified,
@@ -1902,6 +1936,9 @@ class Student extends DataClass implements Insertable<Student> {
       firstName: data.firstName.present ? data.firstName.value : this.firstName,
       lastName: data.lastName.present ? data.lastName.value : this.lastName,
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
+      supabaseId: data.supabaseId.present
+          ? data.supabaseId.value
+          : this.supabaseId,
       synced: data.synced.present ? data.synced.value : this.synced,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastModified: data.lastModified.present
@@ -1917,6 +1954,7 @@ class Student extends DataClass implements Insertable<Student> {
           ..write('firstName: $firstName, ')
           ..write('lastName: $lastName, ')
           ..write('studentId: $studentId, ')
+          ..write('supabaseId: $supabaseId, ')
           ..write('synced: $synced, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastModified: $lastModified')
@@ -1930,6 +1968,7 @@ class Student extends DataClass implements Insertable<Student> {
     firstName,
     lastName,
     studentId,
+    supabaseId,
     synced,
     createdAt,
     lastModified,
@@ -1942,6 +1981,7 @@ class Student extends DataClass implements Insertable<Student> {
           other.firstName == this.firstName &&
           other.lastName == this.lastName &&
           other.studentId == this.studentId &&
+          other.supabaseId == this.supabaseId &&
           other.synced == this.synced &&
           other.createdAt == this.createdAt &&
           other.lastModified == this.lastModified);
@@ -1952,6 +1992,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
   final Value<String> firstName;
   final Value<String> lastName;
   final Value<String> studentId;
+  final Value<String?> supabaseId;
   final Value<bool> synced;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastModified;
@@ -1960,6 +2001,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     this.firstName = const Value.absent(),
     this.lastName = const Value.absent(),
     this.studentId = const Value.absent(),
+    this.supabaseId = const Value.absent(),
     this.synced = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastModified = const Value.absent(),
@@ -1969,6 +2011,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     required String firstName,
     required String lastName,
     required String studentId,
+    this.supabaseId = const Value.absent(),
     required bool synced,
     this.createdAt = const Value.absent(),
     this.lastModified = const Value.absent(),
@@ -1981,6 +2024,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     Expression<String>? firstName,
     Expression<String>? lastName,
     Expression<String>? studentId,
+    Expression<String>? supabaseId,
     Expression<bool>? synced,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastModified,
@@ -1990,6 +2034,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
       if (firstName != null) 'first_name': firstName,
       if (lastName != null) 'last_name': lastName,
       if (studentId != null) 'student_id': studentId,
+      if (supabaseId != null) 'supabase_id': supabaseId,
       if (synced != null) 'synced': synced,
       if (createdAt != null) 'created_at': createdAt,
       if (lastModified != null) 'last_modified': lastModified,
@@ -2001,6 +2046,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     Value<String>? firstName,
     Value<String>? lastName,
     Value<String>? studentId,
+    Value<String?>? supabaseId,
     Value<bool>? synced,
     Value<DateTime>? createdAt,
     Value<DateTime>? lastModified,
@@ -2010,6 +2056,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       studentId: studentId ?? this.studentId,
+      supabaseId: supabaseId ?? this.supabaseId,
       synced: synced ?? this.synced,
       createdAt: createdAt ?? this.createdAt,
       lastModified: lastModified ?? this.lastModified,
@@ -2031,6 +2078,9 @@ class StudentsCompanion extends UpdateCompanion<Student> {
     if (studentId.present) {
       map['student_id'] = Variable<String>(studentId.value);
     }
+    if (supabaseId.present) {
+      map['supabase_id'] = Variable<String>(supabaseId.value);
+    }
     if (synced.present) {
       map['synced'] = Variable<bool>(synced.value);
     }
@@ -2050,6 +2100,7 @@ class StudentsCompanion extends UpdateCompanion<Student> {
           ..write('firstName: $firstName, ')
           ..write('lastName: $lastName, ')
           ..write('studentId: $studentId, ')
+          ..write('supabaseId: $supabaseId, ')
           ..write('synced: $synced, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastModified: $lastModified')
@@ -5080,6 +5131,7 @@ typedef $$StudentsTableCreateCompanionBuilder =
       required String firstName,
       required String lastName,
       required String studentId,
+      Value<String?> supabaseId,
       required bool synced,
       Value<DateTime> createdAt,
       Value<DateTime> lastModified,
@@ -5090,6 +5142,7 @@ typedef $$StudentsTableUpdateCompanionBuilder =
       Value<String> firstName,
       Value<String> lastName,
       Value<String> studentId,
+      Value<String?> supabaseId,
       Value<bool> synced,
       Value<DateTime> createdAt,
       Value<DateTime> lastModified,
@@ -5149,6 +5202,11 @@ class $$StudentsTableFilterComposer
 
   ColumnFilters<String> get studentId => $composableBuilder(
     column: $table.studentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5222,6 +5280,11 @@ class $$StudentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get synced => $composableBuilder(
     column: $table.synced,
     builder: (column) => ColumnOrderings(column),
@@ -5258,6 +5321,11 @@ class $$StudentsTableAnnotationComposer
 
   GeneratedColumn<String> get studentId =>
       $composableBuilder(column: $table.studentId, builder: (column) => column);
+
+  GeneratedColumn<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get synced =>
       $composableBuilder(column: $table.synced, builder: (column) => column);
@@ -5328,6 +5396,7 @@ class $$StudentsTableTableManager
                 Value<String> firstName = const Value.absent(),
                 Value<String> lastName = const Value.absent(),
                 Value<String> studentId = const Value.absent(),
+                Value<String?> supabaseId = const Value.absent(),
                 Value<bool> synced = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastModified = const Value.absent(),
@@ -5336,6 +5405,7 @@ class $$StudentsTableTableManager
                 firstName: firstName,
                 lastName: lastName,
                 studentId: studentId,
+                supabaseId: supabaseId,
                 synced: synced,
                 createdAt: createdAt,
                 lastModified: lastModified,
@@ -5346,6 +5416,7 @@ class $$StudentsTableTableManager
                 required String firstName,
                 required String lastName,
                 required String studentId,
+                Value<String?> supabaseId = const Value.absent(),
                 required bool synced,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastModified = const Value.absent(),
@@ -5354,6 +5425,7 @@ class $$StudentsTableTableManager
                 firstName: firstName,
                 lastName: lastName,
                 studentId: studentId,
+                supabaseId: supabaseId,
                 synced: synced,
                 createdAt: createdAt,
                 lastModified: lastModified,

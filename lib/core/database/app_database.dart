@@ -78,6 +78,7 @@ class Students extends Table {
   TextColumn get firstName => text()();
   TextColumn get lastName => text()();
   TextColumn get studentId => text()();
+  TextColumn get supabaseId => text().nullable()();
   BoolColumn get synced => boolean()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastModified =>
@@ -261,7 +262,7 @@ class AppDatabase extends _$AppDatabase {
     for (final student in allStudents) {
       final fullName = '${student.firstName} ${student.lastName}'.trim();
       print(
-        ' - localId=${student.id} | name=$fullName | studentId=${student.studentId} | synced=${student.synced}',
+        ' - localId=${student.id} | name=$fullName | studentId=${student.studentId} | supabaseId=${student.supabaseId ?? 'null'} | synced=${student.synced}',
       );
     }
   }
