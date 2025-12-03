@@ -16,6 +16,7 @@ class _StudentPageState extends State<StudentPage> {
   List<Map<String, dynamic>> students = [];
   List<Map<String, dynamic>> filteredStudents = [];
   Subject? subjectDetails;
+  String? semesterInfo;
   bool isLoadingAttendance = true;
   int totalClasses = 0;
   int averageAttendancePercent = 0;
@@ -42,20 +43,36 @@ class _StudentPageState extends State<StudentPage> {
       );
 
       if (subject.isNotEmpty) {
+        final subjectData = subject.first;
+        // Get term/semester information
+        Term? term;
+        String? termLabel;
+        try {
+          term = await AppDatabase.instance.getTermById(subjectData.termId);
+          if (term != null) {
+            termLabel = '${term.term} ${term.startYear}-${term.endYear}';
+          }
+        } catch (e) {
+          debugPrint("Error getting term details: $e");
+        }
+
         setState(() {
-          subjectDetails = subject.first;
+          subjectDetails = subjectData;
+          semesterInfo = termLabel;
         });
         debugPrint("Subject found: ${subjectDetails?.subjectName}");
       } else {
         debugPrint("No subject found with ID: ${widget.subjectId}");
         setState(() {
           subjectDetails = null;
+          semesterInfo = null;
         });
       }
     } catch (e) {
       debugPrint("Error getting subject details: $e");
       setState(() {
         subjectDetails = null;
+        semesterInfo = null;
       });
     }
   }
@@ -153,19 +170,20 @@ class _StudentPageState extends State<StudentPage> {
 
   Future<void> refreshData() async {
     await _loadStudentsAndAttendance();
-    // Reset search to show all students
+    // Reset search and filter to show all students
     setState(() {
       searchQuery = '';
+      selectedFilter = 'All';
     });
     filterStudents('');
   }
 
   void filterStudents(String query) {
     setState(() {
-      if (query.isEmpty) {
-        filteredStudents = students;
-      } else {
-        filteredStudents = students.where((student) {
+      // First, filter by search query
+      List<Map<String, dynamic>> searchFiltered = students;
+      if (query.isNotEmpty) {
+        searchFiltered = students.where((student) {
           final fullName = '${student['firstName']} ${student['lastName']}'
               .toLowerCase();
           final studentId = student['studentId'].toString().toLowerCase();
@@ -173,6 +191,30 @@ class _StudentPageState extends State<StudentPage> {
 
           return fullName.contains(searchLower) ||
               studentId.contains(searchLower);
+        }).toList();
+      }
+
+      // Then, filter by attendance percentage based on selectedFilter
+      if (selectedFilter == 'All') {
+        filteredStudents = searchFiltered;
+      } else {
+        filteredStudents = searchFiltered.where((student) {
+          final studentId = student['studentId']?.toString() ?? '';
+          final stats =
+              attendanceSummaries[studentId] ??
+              StudentAttendanceSummary.fromCounts(
+                present: 0,
+                absent: 0,
+                late: 0,
+                totalClasses: totalClasses,
+              );
+
+          if (selectedFilter == 'Good (90%+)') {
+            return stats.attendancePercentage >= 90;
+          } else if (selectedFilter == 'At Risk (<75%)') {
+            return stats.attendancePercentage < 75;
+          }
+          return true;
         }).toList();
       }
     });
@@ -264,7 +306,15 @@ class _StudentPageState extends State<StudentPage> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
+                            color: scheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          semesterInfo!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -275,7 +325,10 @@ class _StudentPageState extends State<StudentPage> {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        if (semesterInfo != null) ...[
+                          const SizedBox(height: 4),
+                        ],
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Expanded(
@@ -310,21 +363,20 @@ class _StudentPageState extends State<StudentPage> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              'Student Attendance',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 8,
+                                top: 12,
+                                bottom: 12,
                               ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: Icon(
-                                Icons.filter_list,
-                                color: scheme.onSurfaceVariant,
+                              child: Text(
+                                'Student Attendance',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface,
+                                ),
                               ),
-                              onPressed: () {},
                             ),
                           ],
                         ),
@@ -384,24 +436,30 @@ class _StudentPageState extends State<StudentPage> {
                             _FilterButton(
                               label: 'All',
                               isSelected: selectedFilter == 'All',
-                              onTap: () =>
-                                  setState(() => selectedFilter = 'All'),
+                              onTap: () {
+                                setState(() => selectedFilter = 'All');
+                                filterStudents(searchQuery);
+                              },
                             ),
                             const SizedBox(width: 8),
                             _FilterButton(
                               label: 'Good (90%+)',
                               isSelected: selectedFilter == 'Good (90%+)',
-                              onTap: () => setState(
-                                () => selectedFilter = 'Good (90%+)',
-                              ),
+                              onTap: () {
+                                setState(() => selectedFilter = 'Good (90%+)');
+                                filterStudents(searchQuery);
+                              },
                             ),
                             const SizedBox(width: 8),
                             _FilterButton(
                               label: 'At Risk (<75%)',
                               isSelected: selectedFilter == 'At Risk (<75%)',
-                              onTap: () => setState(
-                                () => selectedFilter = 'At Risk (<75%)',
-                              ),
+                              onTap: () {
+                                setState(
+                                  () => selectedFilter = 'At Risk (<75%)',
+                                );
+                                filterStudents(searchQuery);
+                              },
                             ),
                           ],
                         ),
