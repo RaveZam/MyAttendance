@@ -18,6 +18,7 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
   List<AttendanceData> _attendances = [];
   List<Student> _enrolledStudents = [];
   List<Student> _absentStudents = [];
+  Map<String, Student> _studentMap = {};
 
   @override
   void initState() {
@@ -114,10 +115,16 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
         );
       }
 
+      // Create a map for quick student lookup by studentId
+      final studentMap = {
+        for (var student in enrolledStudents) student.studentId: student
+      };
+
       setState(() {
         _enrolledStudents = enrolledStudents;
         _attendances = presentAttendances;
         _absentStudents = absentStudents;
+        _studentMap = studentMap;
       });
 
       debugPrint('✅ [ATTENDANCE LOADING] Attendance data loaded successfully');
@@ -169,7 +176,13 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ..._attendances.map((a) => _AttendanceTile(data: a)).toList(),
+                  ..._attendances.map((a) {
+                    final student = _studentMap[a.studentId];
+                    final studentName = student != null
+                        ? '${student.firstName} ${student.lastName}'
+                        : 'Unknown';
+                    return _AttendanceTile(data: a, studentName: studentName);
+                  }).toList(),
 
                   const SizedBox(height: 20),
 
@@ -244,7 +257,8 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
 
 class _AttendanceTile extends StatelessWidget {
   final AttendanceData data;
-  const _AttendanceTile({required this.data});
+  final String studentName;
+  const _AttendanceTile({required this.data, required this.studentName});
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +297,7 @@ class _AttendanceTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Present',
+                  studentName,
                   style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurface.withOpacity(0.7),

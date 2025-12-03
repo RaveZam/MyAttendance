@@ -84,9 +84,7 @@ class _SessionPageState extends State<SessionPage> {
 
   Future<int> _getAttendanceCount(int sessionId) async {
     final attendance = await db.getAttendanceBySessionID(sessionId);
-    return attendance
-        .where((a) => a.status.toLowerCase() == 'present')
-        .length;
+    return attendance.where((a) => a.status.toLowerCase() == 'present').length;
   }
 
   @override
@@ -316,19 +314,6 @@ class _SessionPageState extends State<SessionPage> {
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                         color: scheme.onSurface,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 4),
-
-                                    // Subtitle (placeholder chapter line)
-                                    Text(
-                                      'Chapter 5: Integration Techniques',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: scheme.onSurface.withOpacity(
-                                          0.75,
-                                        ),
                                       ),
                                     ),
 
