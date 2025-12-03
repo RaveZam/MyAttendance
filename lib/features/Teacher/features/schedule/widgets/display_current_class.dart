@@ -279,30 +279,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
   @override
   Widget build(BuildContext context) {
     if (_liveSchedule == null || _liveSubject == null) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.grey[500]),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'No class live at the moment',
-                style: TextStyle(
-                  color: Color(0xFF4B5563),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return _CurrentClassCard(

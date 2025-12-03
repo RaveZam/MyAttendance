@@ -310,13 +310,14 @@ class _StudentPageState extends State<StudentPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          semesterInfo!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: scheme.onSurfaceVariant,
+                        if (semesterInfo != null)
+                          Text(
+                            semesterInfo!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
                         const SizedBox(height: 4),
                         Text(
                           '${subjectDetails?.yearLevel} ${subjectDetails?.section}',
@@ -325,9 +326,6 @@ class _StudentPageState extends State<StudentPage> {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                        if (semesterInfo != null) ...[
-                          const SizedBox(height: 4),
-                        ],
                         const SizedBox(height: 10),
                         Row(
                           children: [

@@ -1,7 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:myattendance/core/database/app_database.dart';
 
-class OverviewSection extends StatelessWidget {
+class OverviewSection extends StatefulWidget {
   const OverviewSection({super.key});
+
+  @override
+  State<OverviewSection> createState() => _OverviewSectionState();
+}
+
+class _OverviewSectionState extends State<OverviewSection> {
+  int _classesCount = 0;
+  String _attendancePercentage = '0%';
+  int _studentsCount = 0;
+  int _presentCount = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayData();
+  }
+
+  Future<void> _loadTodayData() async {
+    setState(() => _loading = true);
+    try {
+      final db = AppDatabase.instance;
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      // Get all sessions
+      final allSessions = await (db.select(db.sessions)).get();
+
+      // Filter sessions for today
+      final todaySessions = allSessions.where((session) {
+        final sessionDate = session.startTime;
+        return sessionDate.isAfter(
+              todayStart.subtract(const Duration(seconds: 1)),
+            ) &&
+            sessionDate.isBefore(todayEnd.add(const Duration(seconds: 1)));
+      }).toList();
+
+      _classesCount = todaySessions.length;
+
+      // Get all session IDs for today
+      final todaySessionIds = todaySessions.map((s) => s.id).toList();
+
+      // Get all attendance records for today's sessions
+      List<AttendanceData> todayAttendance = [];
+      if (todaySessionIds.isNotEmpty) {
+        todayAttendance = await db.getAttendanceBySessionIds(todaySessionIds);
+      }
+
+      // Count present students
+      _presentCount = todayAttendance
+          .where((a) => a.status.toLowerCase() == 'present')
+          .length;
+
+      // Get all unique students across all subjects
+      final allSubjects = await db.getAllSubjects();
+      Set<int> uniqueStudentIds = {};
+      for (final subject in allSubjects) {
+        final students = await db.getStudentsInSubject(subject.id);
+        for (final student in students) {
+          uniqueStudentIds.add(student.id);
+        }
+      }
+      _studentsCount = uniqueStudentIds.length;
+
+      // Calculate attendance percentage based on actual expected attendance
+      // For each session today, count students enrolled in that subject
+      int totalExpectedAttendance = 0;
+
+      for (final session in todaySessions) {
+        final students = await db.getStudentsInSubject(session.subjectId);
+        totalExpectedAttendance += students.length;
+      }
+
+      if (totalExpectedAttendance > 0) {
+        final percentage = (_presentCount / totalExpectedAttendance * 100)
+            .round();
+        _attendancePercentage = '$percentage%';
+      } else {
+        _attendancePercentage = '0%';
+      }
+    } catch (e) {
+      debugPrint('Error loading today data: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +141,7 @@ class OverviewSection extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: scheme.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.black.withOpacity(0.04)),
               boxShadow: [
@@ -63,45 +153,52 @@ class OverviewSection extends StatelessWidget {
               ],
             ),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _CompactStatCard(
-                    icon: Icons.calendar_today,
-                    iconColor: Color(0xFF2563EB),
-                    label: 'Classes',
-                    value: '5',
+            child: _loading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _CompactStatCard(
+                          icon: Icons.calendar_today,
+                          iconColor: Color(0xFF2563EB),
+                          label: 'Classes',
+                          value: _classesCount.toString(),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _CompactStatCard(
+                          icon: Icons.insights,
+                          iconColor: Color(0xFF10B981),
+                          label: 'Attendance',
+                          value: _attendancePercentage,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _CompactStatCard(
+                          icon: Icons.groups,
+                          iconColor: Color(0xFF059669),
+                          label: 'Students',
+                          value: _studentsCount.toString(),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: _CompactStatCard(
+                          icon: Icons.verified,
+                          iconColor: Color(0xFFF59E0B),
+                          label: 'Present',
+                          value: _presentCount.toString(),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _CompactStatCard(
-                    icon: Icons.insights,
-                    iconColor: Color(0xFF10B981),
-                    label: 'Attendance',
-                    value: '92%',
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _CompactStatCard(
-                    icon: Icons.groups,
-                    iconColor: Color(0xFF059669),
-                    label: 'Students',
-                    value: '128',
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _CompactStatCard(
-                    icon: Icons.verified,
-                    iconColor: Color(0xFFF59E0B),
-                    label: 'Present',
-                    value: '118',
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
