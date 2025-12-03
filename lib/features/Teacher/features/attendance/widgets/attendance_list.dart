@@ -16,10 +16,45 @@ class AttendanceList extends StatefulWidget {
 
 class _AttendanceListState extends State<AttendanceList> {
   bool _isLoading = false;
+  Map<String, Student> _studentCache = {};
 
   @override
   void initState() {
     super.initState();
+    _loadStudentNames();
+  }
+
+  @override
+  void didUpdateWidget(AttendanceList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.attendanceList != widget.attendanceList) {
+      _loadStudentNames();
+    }
+  }
+
+  Future<void> _loadStudentNames() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final Map<String, Student> cache = {};
+    for (final attendance in widget.attendanceList) {
+      if (!cache.containsKey(attendance.studentId)) {
+        final student = await AppDatabase.instance.getStudentByStudentId(
+          attendance.studentId,
+        );
+        if (student != null) {
+          cache[attendance.studentId] = student;
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _studentCache = cache;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -49,15 +84,6 @@ class _AttendanceListState extends State<AttendanceList> {
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${widget.attendanceList.length}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: scheme.primary,
                   ),
                 ),
               ],
@@ -127,6 +153,11 @@ class _AttendanceListState extends State<AttendanceList> {
   }
 
   Widget _buildAttendanceItem(AttendanceData attendance, ColorScheme scheme) {
+    final student = _studentCache[attendance.studentId];
+    final studentName = student != null
+        ? '${student.firstName} ${student.lastName}'
+        : 'Loading...';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       padding: const EdgeInsets.all(12),
@@ -152,7 +183,7 @@ class _AttendanceListState extends State<AttendanceList> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Student ID: ${attendance.studentId}',
+                  studentName,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -160,40 +191,45 @@ class _AttendanceListState extends State<AttendanceList> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        attendance.status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_formatTime(attendance.createdAt)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: scheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Student ID: ${attendance.studentId}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_formatTime(attendance.createdAt)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.check_circle, color: Colors.green, size: 20),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  attendance.status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

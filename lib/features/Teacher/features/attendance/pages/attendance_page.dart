@@ -632,56 +632,67 @@ class _AttendancePageState extends State<AttendancePage> {
               const SizedBox(height: 20),
 
               // Current Session summary (always visible)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Current Session',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        _StatItem(label: 'Present', value: '24'),
-                        _StatItem(label: 'Absent', value: '6'),
-                        _StatItem(label: 'Total', value: '30'),
+              Builder(
+                builder: (context) {
+                  // Calculate present students
+                  final presentCount = _attendance
+                      .where((a) => a.status.toLowerCase() == 'present')
+                      .length;
+
+                  // Calculate pending students (total enrolled - students with attendance records)
+                  final studentsWithAttendance = _attendance
+                      .map((a) => a.studentId)
+                      .toSet();
+                  final pendingCount = _students
+                      .where(
+                        (student) =>
+                            !studentsWithAttendance.contains(student.studentId),
+                      )
+                      .length;
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Current Session',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _StatItem(
+                              label: 'Present',
+                              value: presentCount.toString(),
+                              textColor: Colors.green.shade800,
+                            ),
+                            _StatItem(
+                              label: 'Pending',
+                              value: pendingCount.toString(),
+                              textColor: scheme.primary,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 18),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Recent Check-ins',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  TextButton(onPressed: () {}, child: const Text('View All')),
-                ],
-              ),
-              const SizedBox(height: 8),
 
               AttendanceList(
                 sessionID: widget.sessionID,
@@ -816,19 +827,21 @@ class _MethodCard extends StatelessWidget {
 class _StatItem extends StatelessWidget {
   final String label;
   final String value;
+  final Color? textColor;
 
-  const _StatItem({required this.label, required this.value});
+  const _StatItem({required this.label, required this.value, this.textColor});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final valueColor = textColor ?? scheme.onSurface;
     return Expanded(
       child: Column(
         children: [
           Text(
             value,
             style: TextStyle(
-              color: scheme.onSurface,
+              color: valueColor,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -837,7 +850,7 @@ class _StatItem extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: scheme.onSurface.withOpacity(0.7),
+              color: textColor ?? scheme.onSurface.withOpacity(0.7),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
