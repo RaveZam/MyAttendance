@@ -20,6 +20,7 @@ class StudentApp extends StatelessWidget {
     // }
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Student App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),

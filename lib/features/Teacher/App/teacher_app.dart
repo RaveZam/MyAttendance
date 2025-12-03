@@ -14,6 +14,7 @@ class TeacherApp extends StatelessWidget {
     final session = Supabase.instance.client.auth.currentSession;
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Teacher App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
