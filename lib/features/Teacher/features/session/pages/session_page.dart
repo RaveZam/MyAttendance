@@ -84,7 +84,9 @@ class _SessionPageState extends State<SessionPage> {
 
   Future<int> _getAttendanceCount(int sessionId) async {
     final attendance = await db.getAttendanceBySessionID(sessionId);
-    return attendance.length;
+    return attendance
+        .where((a) => a.status.toLowerCase() == 'present')
+        .length;
   }
 
   @override
