@@ -1,23 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
-import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
 
-class Qrcode extends StatefulWidget {
-  const Qrcode({super.key});
+class Qrcode extends StatelessWidget {
+  final Map<String, dynamic>? classData;
+  final Widget? footer;
 
-  @override
-  State<Qrcode> createState() => _QrcodeState();
-}
+  const Qrcode({super.key, this.classData, this.footer});
 
-class _QrcodeState extends State<Qrcode> {
-  final classdata = {
+  static const Map<String, dynamic> _fallbackData = {
     "class_code": "CS101",
     "class_name": "Introduction to Computer Science",
     "class_session_id": "2025-09-03-10AM",
-    "service_uuid": "12345678-1234-1234-1234-123456789abc",
-    "char_uuid": "abcd1234-5678-90ab-cdef-1234567890ab",
-    "instructor_name": "John Facun",
+    "instructor_name": "Instructor",
     "start_time": "10:00 AM",
     "end_time": "11:00 AM",
     "day": "Monday",
@@ -25,147 +20,119 @@ class _QrcodeState extends State<Qrcode> {
 
   @override
   Widget build(BuildContext context) {
-    final jsonString = jsonEncode(classdata);
+    final data = {..._fallbackData, ...?classData};
+    final className = (data["class_name"] ?? "Class Name").toString();
+    final classCode = (data["class_code"] ?? "CLASS101").toString();
+    final section = (data["section"] ?? "").toString().trim();
+    final yearLevel = (data["year_level"] ?? "").toString().trim();
+    final day = (data["day"] ?? "").toString();
+    final start = (data["start_time"] ?? "-").toString();
+    final end = (data["end_time"] ?? "-").toString();
+    final detailParts = [
+      if (classCode.isNotEmpty) classCode,
+      if (section.isNotEmpty) section,
+      if (day.isNotEmpty) day,
+    ];
+    final detailLine = detailParts.join(' • ');
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Class + QR section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.school_rounded,
-                        color: Theme.of(context).primaryColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              classdata["class_name"]!,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                            Text(
-                              "${classdata["class_code"]} • ${classdata["day"]}",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // QR Code
-                PrettyQrView.data(
-                  data: jsonString,
-                  decoration: const PrettyQrDecoration(
-                    quietZone: PrettyQrQuietZone.standart,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Time Info
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildTimeInfo(
-                        "Start",
-                        classdata["start_time"]!,
-                        Colors.green,
-                      ),
-                      Container(
-                        height: 20,
-                        width: 1,
-                        color: Colors.grey.shade300,
-                      ),
-                      _buildTimeInfo("End", classdata["end_time"]!, Colors.red),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    final jsonString = jsonEncode(data);
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-
-          const SizedBox(height: 16),
-
-          // Scanner Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade100),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
                   children: [
                     Icon(
-                      Icons.bluetooth_connected_rounded,
-                      color: Colors.blue.shade600,
+                      Icons.school_rounded,
+                      color: Theme.of(context).primaryColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      "BLE Scanner",
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            className,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          Text(
+                            detailLine.isEmpty ? classCode : detailLine,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 20),
+              PrettyQrView.data(
+                data: jsonString,
+                decoration: const PrettyQrDecoration(
+                  quietZone: PrettyQrQuietZone.standart,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildTimeInfo("Start", start, Colors.green),
+                    Container(
+                      height: 20,
+                      width: 1,
+                      color: Colors.grey.shade300,
+                    ),
+                    _buildTimeInfo("End", end, Colors.red),
+                  ],
+                ),
+              ),
+              if (yearLevel.isNotEmpty) ...[
                 const SizedBox(height: 12),
-
-                SizedBox(
-                  height: 300,
-
-                  child: TeacherScannerPage(qrPayload: jsonString),
+                Text(
+                  'Year Level: $yearLevel',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (footer != null) ...[const SizedBox(height: 16), footer!],
+      ],
     );
   }
 

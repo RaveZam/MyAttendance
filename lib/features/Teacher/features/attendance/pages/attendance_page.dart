@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:myattendance/core/database/app_database.dart';
 import 'package:intl/intl.dart';
+import 'package:myattendance/core/database/app_database.dart';
+import 'package:myattendance/features/BLE/pages/teacher_scanner_page.dart';
+import 'package:myattendance/features/QRFeature/widgets/qrcode.dart';
 import 'package:myattendance/features/QRFeature/widgets/teacher_qr_reader.dart';
 import 'package:myattendance/features/Teacher/features/attendance/widgets/attendance_list.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 class AttendancePage extends StatefulWidget {
   final String subjectId;
@@ -31,15 +35,29 @@ class _AttendancePageState extends State<AttendancePage> {
 
   List<AttendanceData> _attendance = [];
   bool _isResumingSession = false;
+  String _instructorName = '';
 
   @override
   void initState() {
     super.initState();
-    _getSubjectDetails();
     getSessionDetails();
     _loadStudents();
     _loadAttendance();
     _checkIfResumingSession();
+    _loadInstructorName();
+  }
+
+  void _loadInstructorName() {
+    final user = supa.Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    final firstName = (user.userMetadata?['first_name'] ?? '').toString();
+    final lastName = (user.userMetadata?['last_name'] ?? '').toString();
+    final fullName = '$firstName $lastName'.trim();
+    setState(() {
+      _instructorName = fullName.isEmpty ? 'Instructor' : fullName;
+    });
   }
 
   void _checkIfResumingSession() async {
@@ -69,11 +87,9 @@ class _AttendancePageState extends State<AttendancePage> {
         '   📝 Attendance ${record.id}: Student ${record.studentId} - ${record.status}',
       );
       debugPrint('      📅 Created: ${record.createdAt.toIso8601String()}');
-      if (record.lastModified != null) {
-        debugPrint(
-          '      🔄 Last Modified: ${record.lastModified!.toIso8601String()}',
-        );
-      }
+      debugPrint(
+        '      🔄 Last Modified: ${record.lastModified.toIso8601String()}',
+      );
     }
 
     setState(() {
@@ -83,23 +99,31 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   void getSessionDetails() async {
-    final sessions = await AppDatabase.instance.getSessionByID(
-      int.parse(widget.sessionID),
-    );
+    final sessionId = int.tryParse(widget.sessionID);
+    if (sessionId == null) {
+      _loadSubjectDetails(int.tryParse(widget.subjectId));
+      return;
+    }
+
+    final sessions = await AppDatabase.instance.getSessionByID(sessionId);
     if (sessions.isNotEmpty) {
+      final session = sessions.first;
       setState(() {
-        sessionDetails = sessions.first;
+        sessionDetails = session;
       });
       debugPrint('Session loaded: $sessionDetails');
+      _loadSubjectDetails(session.subjectId);
+    } else {
+      _loadSubjectDetails(int.tryParse(widget.subjectId));
     }
   }
 
-  void _getSubjectDetails() async {
-    debugPrint('AttendancePage: fetching subject ${widget.subjectId}');
+  Future<void> _loadSubjectDetails(int? subjectId) async {
+    if (subjectId == null) return;
+
+    debugPrint('AttendancePage: fetching subject $subjectId');
     try {
-      final subjects = await AppDatabase.instance.getSubjectByID(
-        int.parse(widget.subjectId),
-      );
+      final subjects = await AppDatabase.instance.getSubjectByID(subjectId);
 
       if (subjects.isNotEmpty) {
         setState(() {
@@ -110,7 +134,7 @@ class _AttendancePageState extends State<AttendancePage> {
         setState(() {
           subjectDetails = null;
         });
-        debugPrint('No subject found with ID: ${widget.subjectId}');
+        debugPrint('No subject found with ID: $subjectId');
       }
     } catch (e) {
       debugPrint('Error loading subject details: $e');
@@ -432,6 +456,13 @@ class _AttendancePageState extends State<AttendancePage> {
                       subtitle: 'Manually enter student ID numbers',
                       onTap: () => _selectMethod('manual'),
                     ),
+                    const SizedBox(height: 12),
+                    _MethodCard(
+                      icon: Icons.bluetooth_connected,
+                      title: 'BLE Broadcast',
+                      subtitle: 'Students scan class QR then broadcast via BLE',
+                      onTap: () => _selectMethod('ble'),
+                    ),
                   ],
                 ),
               ] else if (_selectedMethod == 'qr') ...[
@@ -512,6 +543,8 @@ class _AttendancePageState extends State<AttendancePage> {
                     ],
                   ),
                 ),
+              ] else if (_selectedMethod == 'ble') ...[
+                _buildBleMethodCard(scheme),
               ] else if (_selectedMethod == 'manual') ...[
                 // Manual Input
                 Container(
@@ -751,6 +784,138 @@ class _AttendancePageState extends State<AttendancePage> {
       ),
     );
   }
+  Widget _buildBleMethodCard(ColorScheme scheme) {
+    final classData = _buildBleClassData();
+    final qrPayload = jsonEncode(classData);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: _goBack,
+                icon: const Icon(Icons.arrow_back),
+                style: IconButton.styleFrom(
+                  backgroundColor: scheme.surface,
+                  foregroundColor: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'BLE Attendance',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Qrcode(classData: classData),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.bluetooth_searching,
+                      color: Colors.blue.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Scanner",
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Keep this screen open so nearby students can broadcast their '
+                  'attendance after scanning your class QR.',
+                  style: TextStyle(
+                    color: Colors.blueGrey.shade700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 320,
+                  child: TeacherScannerPage(
+                    qrPayload: qrPayload,
+                    students: _students,
+                    attendanceList: _attendance,
+                    loadAttendance: _loadAttendance,
+                    sessionRecordId: widget.sessionID,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _buildBleClassData() {
+    final subject = subjectDetails;
+    final session = sessionDetails;
+    final sessionStart = session?.startTime;
+    final sessionEnd = session?.endTime;
+    final day =
+        sessionStart != null ? DateFormat('EEEE').format(sessionStart) : '';
+    final timeFormat = DateFormat('h:mm a');
+
+    final startTime =
+        sessionStart != null ? timeFormat.format(sessionStart) : '-';
+    final endTime =
+        sessionEnd != null ? timeFormat.format(sessionEnd) : '';
+
+    final sessionIdentifier = (sessionDetails?.supabaseId ?? '').isNotEmpty
+        ? sessionDetails!.supabaseId!
+        : widget.sessionID;
+
+    return {
+      "class_code": subject?.subjectCode ?? 'CLASS',
+      "class_name": subject?.subjectName ?? 'Class',
+      "section": subject?.section ?? '',
+      "year_level": subject?.yearLevel ?? '',
+      "class_session_id": sessionIdentifier,
+      "instructor_name": _instructorName,
+      "start_time": startTime,
+      "end_time": endTime.isEmpty ? '-' : endTime,
+      "day": day,
+    };
+  }
+
 }
 
 class _MethodCard extends StatelessWidget {
