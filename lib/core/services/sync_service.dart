@@ -147,23 +147,7 @@ class SyncService {
       },
     );
 
-    final subjectStudentsFuture = _syncTable(
-      tableName: 'subject_students',
-      getUnsynced: () => (db.select(
-        db.subjectStudents,
-      )..where((t) => t.synced.equals(false))).get(),
-      markSynced: (ids) async {
-        await (db.update(db.subjectStudents)..where((t) => t.id.isIn(ids)))
-            .write(SubjectStudentsCompanion(synced: Value(true)));
-      },
-      mapRow: (ss) => {
-        'local_id': (ss as dynamic).id,
-        'local_student_id': (ss as dynamic).studentId,
-        'local_subject_id': (ss as dynamic).subjectId,
-        'created_at': (ss as dynamic).createdAt.toIso8601String(),
-        'last_modified': (ss as dynamic).lastModified.toIso8601String(),
-      },
-    );
+    final subjectStudentsFuture = _syncSubjectStudentsInsertOnly();
 
     // Run sequentially for tables with dependencies
     await studentsFuture;
@@ -172,7 +156,6 @@ class SyncService {
     await sessionsFuture;
     await attendanceFuture;
     await subjectStudentsFuture;
-
     debugPrint('✅ Upload complete!');
   }
 
@@ -199,6 +182,11 @@ class SyncService {
     final unsynced = await getUnsynced();
     if (unsynced.isEmpty) return;
 
+    if (tableName == 'subject_students') {
+      debugPrint('⏭️ Skipping subject_students sync (disabled).');
+      return;
+    }
+
     // Separate records into inserts and updates
     final List<Map<String, dynamic>> toInsert = [];
     final List<Map<String, dynamic>> toUpdate = [];
@@ -207,20 +195,6 @@ class SyncService {
     for (final row in unsynced) {
       final payload = Map<String, dynamic>.from(mapRow(row));
       final localId = (row as dynamic).id as int;
-
-      if (tableName == 'subject_students') {
-        final localStudentId = (row as dynamic).studentId as int?;
-        final resolvedStudentUuid = localStudentId == null
-            ? null
-            : await _getStudentSupabaseId(localStudentId);
-        if (resolvedStudentUuid == null) {
-          debugPrint(
-            '⚠️ Skipping subject_students sync for local_id=$localId – student missing supabase_id.',
-          );
-          continue;
-        }
-        payload['student_id'] = resolvedStudentUuid;
-      }
 
       // Check if this record has a supabaseId (already synced before = UPDATE)
       String? supabaseId;
@@ -331,50 +305,8 @@ class SyncService {
         payload.remove('prof_local_id');
       }
 
-      if (tableName == 'subject_students') {
-        // Resolve local subject ID to Supabase subject_offerings UUID
-        final int? localSubjectId = (row as dynamic).subjectId as int?;
-        String? subjectOfferingUuid;
-
-        if (localSubjectId != null) {
-          try {
-            // Get the local subject to find its supabaseId (which is subject_offerings.id)
-            final localSubject = await (db.select(
-              db.subjects,
-            )..where((t) => t.id.equals(localSubjectId))).getSingleOrNull();
-
-            if (localSubject != null && localSubject.supabaseId != null) {
-              // The supabaseId in local subjects table is the subject_offerings.id
-              subjectOfferingUuid = localSubject.supabaseId;
-            } else {
-              // If no supabaseId, try to find the subject_offering by local_id
-              final profId = supabase.auth.currentUser?.id;
-              if (profId != null) {
-                final offeringResp = await supabase
-                    .from('subject_offerings')
-                    .select('id')
-                    .eq('local_id', localSubjectId)
-                    .eq('prof_id', profId)
-                    .maybeSingle();
-
-                if (offeringResp != null && offeringResp.containsKey('id')) {
-                  subjectOfferingUuid = offeringResp['id'] as String?;
-                }
-              }
-            }
-          } catch (e) {
-            debugPrint(
-              'Failed to resolve subject_offering UUID for local subject $localSubjectId: $e',
-            );
-          }
-        }
-
-        // Set the resolved UUID (keep local_subject_id as Supabase needs both)
-        if (subjectOfferingUuid != null) {
-          payload['subject_id'] = subjectOfferingUuid;
-        }
-        // Keep local_subject_id - Supabase schema requires both subject_id (UUID) and local_subject_id (int4)
-      }
+      // NOTE: We removed the old subject_students resolution logic block here
+      // because we handled it at the top of the loop with direct local lookups.
 
       if (tableName == 'sessions') {
         // Resolve local subject ID to Supabase subject_offerings UUID
@@ -600,36 +532,127 @@ class SyncService {
     }
   }
 
+  /// Upload subject_students entries as INSERT-only.
+  /// Requires both the subject (supabaseId) and student (supabaseId) to exist.
+  Future<void> _syncSubjectStudentsInsertOnly() async {
+    final unsynced = await (db.select(
+      db.subjectStudents,
+    )..where((t) => t.synced.equals(false))).get();
+
+    if (unsynced.isEmpty) return;
+
+    final List<Map<String, dynamic>> payloads = [];
+
+    for (final row in unsynced) {
+      final localId = row.id;
+      final localStudentId = row.studentId;
+      final localSubjectId = row.subjectId;
+
+      final subject = await (db.select(
+        db.subjects,
+      )..where((t) => t.id.equals(localSubjectId))).getSingleOrNull();
+      final subjectUuid = subject?.supabaseId;
+      if (subjectUuid == null || subjectUuid.isEmpty) {
+        debugPrint(
+          '⚠️ Skipping subject_students row $localId - missing subject supabaseId for subject $localSubjectId',
+        );
+        continue;
+      }
+
+      final student = await (db.select(
+        db.students,
+      )..where((t) => t.id.equals(localStudentId))).getSingleOrNull();
+      // Resolve the actual Supabase student row (id) using Supabase "students" table.
+      // Primary lookup: local_id (matches local student PK).
+      // Fallback: auth_id (student.supabaseId) if local_id match fails.
+      String? remoteStudentId;
+      try {
+        final byLocalId = await supabase
+            .from('students')
+            .select('id')
+            .eq('local_id', localStudentId)
+            .maybeSingle();
+        if (byLocalId != null && byLocalId['id'] is String) {
+          remoteStudentId = byLocalId['id'] as String;
+        } else if (student?.supabaseId != null &&
+            student!.supabaseId!.isNotEmpty) {
+          final byAuthId = await supabase
+              .from('students')
+              .select('id')
+              .eq('auth_id', student.supabaseId!)
+              .maybeSingle();
+          if (byAuthId != null && byAuthId['id'] is String) {
+            remoteStudentId = byAuthId['id'] as String;
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '⚠️ Failed to resolve remote student for local_id=$localStudentId: $e',
+        );
+      }
+
+      if (remoteStudentId == null || remoteStudentId.isEmpty) {
+        debugPrint(
+          '⚠️ Skipping subject_students row $localId - could not find remote student for local_id=$localStudentId',
+        );
+        continue;
+      }
+
+      payloads.add({
+        'local_id': localId,
+        'local_student_id': localStudentId,
+        'local_subject_id': localSubjectId,
+        'subject_id': subjectUuid,
+        'student_id': remoteStudentId,
+        'created_at': row.createdAt.toIso8601String(),
+        'last_modified': row.lastModified.toIso8601String(),
+      });
+    }
+
+    if (payloads.isEmpty) {
+      debugPrint('⏭️ No subject_students to upload (missing references).');
+      return;
+    }
+
+    try {
+      final insertResponse = await supabase
+          .from('subject_students')
+          .insert(payloads)
+          .select('id, local_id');
+
+      final syncedIds = <int>[];
+      for (final item in insertResponse) {
+        final localId = item['local_id'] as int?;
+        final uuid = item['id'] as String?;
+        if (localId != null) {
+          syncedIds.add(localId);
+          if (uuid != null && uuid.isNotEmpty) {
+            await (db.update(db.subjectStudents)
+                  ..where((t) => t.id.equals(localId)))
+                .write(SubjectStudentsCompanion(supabaseId: Value(uuid)));
+          }
+        }
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await (db.update(db.subjectStudents)
+              ..where((t) => t.id.isIn(syncedIds)))
+            .write(SubjectStudentsCompanion(synced: const Value(true)));
+      }
+
+      debugPrint('✅ Uploaded subject_students: ${payloads.length} inserts');
+    } catch (e) {
+      debugPrint('❌ FAILED to sync "subject_students" inserts.');
+      debugPrint('⚠️ Error details: $e');
+      rethrow;
+    }
+  }
+
   DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     if (value is DateTime) return value;
     if (value is String) return DateTime.tryParse(value);
     return null;
-  }
-
-  Future<String?> _getStudentSupabaseId(int localStudentId) async {
-    try {
-      final student = await (db.select(
-        db.students,
-      )..where((t) => t.id.equals(localStudentId))).getSingleOrNull();
-      final authId = student?.supabaseId;
-      if (authId == null || authId.isEmpty) return null;
-
-      final remoteStudent = await supabase
-          .from('students')
-          .select('id')
-          .eq('auth_id', authId)
-          .maybeSingle();
-
-      if (remoteStudent != null && remoteStudent.containsKey('id')) {
-        return remoteStudent['id'] as String?;
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Error resolving supabase_id for student $localStudentId: $e');
-      return null;
-    }
   }
 
   /// Get the latest last_modified timestamp from local database for a table
@@ -932,7 +955,6 @@ class SyncService {
     debugPrint('⬇️ Loading data from Supabase for prof_id: $profId');
 
     try {
-      final Map<int, int> studentIdMap = {};
       final Map<int, int> subjectIdMap = {};
       final Set<int> profSubjectLocalIds = {};
       final Set<int> sessionLocalIds = {};
@@ -1183,15 +1205,8 @@ class SyncService {
                 ),
                 mode: InsertMode.insertOrReplace,
               );
-
-          if (remoteLocalId != null) {
-            studentIdMap[remoteLocalId] = remoteLocalId;
-          }
         } else {
           final resolvedId = local.id;
-          if (remoteLocalId != null) {
-            studentIdMap[remoteLocalId] = resolvedId;
-          }
 
           if (serverModified != null &&
               serverModified.isAfter(local.lastModified)) {
@@ -1420,72 +1435,88 @@ class SyncService {
         }
       }
 
-      // 7️⃣ Load Subject-Student relationships only for this prof's subject offerings
-      final subjectStudentsRemote = await supabase
-          .from('subject_students')
-          .select()
-          .inFilter('subject_id', profSubjectOfferingUuids.toList());
-      for (final entry in subjectStudentsRemote) {
-        final subjectLocalId = entry['local_subject_id'] as int?;
-        final studentLocalId = entry['local_student_id'] as int?;
-        if (subjectLocalId == null || studentLocalId == null) continue;
+      // 7️⃣ Load Subject-Student relationships for this prof's subject offerings
+      if (profSubjectOfferingUuids.isNotEmpty) {
+        final subjectStudentsRemote = await supabase
+            .from('subject_students')
+            .select()
+            .inFilter('subject_id', profSubjectOfferingUuids.toList());
 
-        final mappedSubjectId = subjectIdMap[subjectLocalId] ?? subjectLocalId;
-        if (!profSubjectLocalIds.contains(subjectLocalId) &&
-            subjectIdMap[subjectLocalId] == null)
-          continue;
+        for (final entry in subjectStudentsRemote) {
+          final localId = entry['local_id'] as int?;
+          final localSubjectId = entry['local_subject_id'] as int?;
+          final localStudentId = entry['local_student_id'] as int?;
+          if (localId == null ||
+              localSubjectId == null ||
+              localStudentId == null) {
+            continue;
+          }
 
-        final mappedStudentId = studentIdMap[studentLocalId] ?? studentLocalId;
+          // Resolve local subject ID
+          final mappedSubjectId =
+              subjectIdMap[localSubjectId] ?? localSubjectId;
+          if (!profSubjectLocalIds.contains(localSubjectId) &&
+              subjectIdMap[localSubjectId] == null) {
+            continue;
+          }
 
-        final localId = entry['local_id'] as int?;
-        if (localId == null) continue;
+          // Resolve local student ID - query by local_id
+          final localStudent = await (db.select(
+            db.students,
+          )..where((t) => t.id.equals(localStudentId))).getSingleOrNull();
+          if (localStudent == null) {
+            continue;
+          }
 
-        final remoteLastModified = _parseDateTime(entry['last_modified']);
-        final remoteCreatedAt = _parseDateTime(entry['created_at']);
+          final remoteLastModified = _parseDateTime(entry['last_modified']);
+          final remoteCreatedAt = _parseDateTime(entry['created_at']);
+          final supabaseUuid = entry['id'] as String?;
 
-        final supabaseUuid = entry['id'] as String?;
-        final localSubjectStudent = await (db.select(
-          db.subjectStudents,
-        )..where((t) => t.id.equals(localId))).getSingleOrNull();
-
-        if (localSubjectStudent == null) {
-          await db
-              .into(db.subjectStudents)
-              .insert(
-                SubjectStudentsCompanion(
-                  id: Value(localId),
-                  subjectId: Value(mappedSubjectId),
-                  studentId: Value(mappedStudentId),
-                  supabaseId: supabaseUuid != null
-                      ? Value(supabaseUuid)
-                      : const Value.absent(),
-                  createdAt: Value(remoteCreatedAt ?? DateTime.now()),
-                  lastModified: Value(remoteLastModified ?? DateTime.now()),
-                  synced: const Value(true),
-                ),
-                mode: InsertMode.insertOrReplace,
-              );
-        } else if (remoteLastModified != null &&
-            remoteLastModified.isAfter(localSubjectStudent.lastModified)) {
-          await (db.update(
+          final localSubjectStudent = await (db.select(
             db.subjectStudents,
-          )..where((t) => t.id.equals(localId))).write(
-            SubjectStudentsCompanion(
-              subjectId: Value(mappedSubjectId),
-              studentId: Value(mappedStudentId),
-              supabaseId: supabaseUuid != null
-                  ? Value(supabaseUuid)
-                  : Value(localSubjectStudent.supabaseId),
-              lastModified: Value(remoteLastModified),
-              synced: const Value(true),
-            ),
-          );
-        } else if (supabaseUuid != null &&
-            localSubjectStudent.supabaseId != supabaseUuid) {
-          // Update UUID even if not newer
-          await (db.update(db.subjectStudents)
-                ..where((t) => t.id.equals(localId)))
-              .write(SubjectStudentsCompanion(supabaseId: Value(supabaseUuid)));
+          )..where((t) => t.id.equals(localId))).getSingleOrNull();
+
+          if (localSubjectStudent == null) {
+            await db
+                .into(db.subjectStudents)
+                .insert(
+                  SubjectStudentsCompanion(
+                    id: Value(localId),
+                    subjectId: Value(mappedSubjectId),
+                    studentId: Value(localStudentId),
+                    supabaseId: supabaseUuid != null
+                        ? Value(supabaseUuid)
+                        : const Value.absent(),
+                    createdAt: Value(remoteCreatedAt ?? DateTime.now()),
+                    lastModified: Value(remoteLastModified ?? DateTime.now()),
+                    synced: const Value(true),
+                  ),
+                  mode: InsertMode.insertOrReplace,
+                );
+          } else if (remoteLastModified != null &&
+              remoteLastModified.isAfter(localSubjectStudent.lastModified)) {
+            await (db.update(
+              db.subjectStudents,
+            )..where((t) => t.id.equals(localId))).write(
+              SubjectStudentsCompanion(
+                subjectId: Value(mappedSubjectId),
+                studentId: Value(localStudentId),
+                supabaseId: supabaseUuid != null
+                    ? Value(supabaseUuid)
+                    : Value(localSubjectStudent.supabaseId),
+                lastModified: Value(remoteLastModified),
+                synced: const Value(true),
+              ),
+            );
+          } else if (supabaseUuid != null &&
+              localSubjectStudent.supabaseId != supabaseUuid) {
+            // Update UUID even if not newer
+            await (db.update(
+              db.subjectStudents,
+            )..where((t) => t.id.equals(localId))).write(
+              SubjectStudentsCompanion(supabaseId: Value(supabaseUuid)),
+            );
+          }
         }
       }
 

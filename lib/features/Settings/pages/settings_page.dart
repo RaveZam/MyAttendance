@@ -22,6 +22,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String _lastSyncTime = 'Never';
   String _syncStatusMessage = 'Checking sync status...';
   SyncStatus? _currentSyncStatus;
+  bool _isClearingData = false;
+  bool _isMarkingUnsynced = false;
 
   @override
   void initState() {
@@ -29,6 +31,8 @@ class _SettingsPageState extends State<SettingsPage> {
     // Log local data when settings is opened to help debug sync state
     AppDatabase.instance.logAllStudents();
     AppDatabase.instance.logAllSubjectsAndOfferings();
+    AppDatabase.instance.logAllSubjectStudents();
+    AppDatabase.instance.logAttendanceSessionScheduleCounts();
     _loadUserSettings();
     _checkSyncStatus();
   }
@@ -129,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       // Clear all database data before signing out
       await AppDatabase.instance.clearAllDatabaseData();
-      
+
       final success = await authService.signOut();
       if (mounted && success) {
         // Ensure the confirmation dialog is closed
@@ -357,6 +361,50 @@ class _SettingsPageState extends State<SettingsPage> {
             _showAboutDialog();
           },
         ),
+        const Divider(),
+
+        // Temporary maintenance action: mark all rows unsynced
+        ListTile(
+          leading: const Icon(Icons.sync_problem, color: Colors.orange),
+          title: Text(
+            _isMarkingUnsynced
+                ? 'Marking all as unsynced…'
+                : 'Mark all data as unsynced (temp)',
+            style: TextStyle(color: Colors.orange.shade800),
+          ),
+          subtitle: const Text('Sets synced = false on all Drift tables'),
+          trailing: _isMarkingUnsynced
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.chevron_right, color: Colors.orange),
+          onTap: _isMarkingUnsynced ? null : _markAllAsUnsynced,
+          contentPadding: EdgeInsets.zero,
+        ),
+        const Divider(),
+
+        // Temporary maintenance action: clear all local Drift data
+        ListTile(
+          leading: const Icon(Icons.delete_forever, color: Colors.red),
+          title: Text(
+            _isClearingData
+                ? 'Clearing local data…'
+                : 'Clear local data (temp)',
+            style: TextStyle(color: Colors.red.shade700),
+          ),
+          subtitle: const Text('Removes all cached Drift tables'),
+          trailing: _isClearingData
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.chevron_right, color: Colors.red),
+          onTap: _isClearingData ? null : _confirmClearLocalData,
+          contentPadding: EdgeInsets.zero,
+        ),
       ],
     );
   }
@@ -477,5 +525,86 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmClearLocalData() async {
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all local data?'),
+        content: const Text(
+          'This will remove all Drift tables (subjects, schedules, sessions, attendance, students, and links).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldProceed != true) return;
+
+    setState(() => _isClearingData = true);
+    try {
+      await AppDatabase.instance.clearAllDatabaseData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Local data cleared.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to clear data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isClearingData = false);
+      }
+    }
+  }
+
+  Future<void> _markAllAsUnsynced() async {
+    setState(() => _isMarkingUnsynced = true);
+    try {
+      await AppDatabase.instance.markAllDataUnsynced();
+      await _checkSyncStatus();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All local rows marked as unsynced.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to mark as unsynced: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isMarkingUnsynced = false);
+      }
+    }
   }
 }

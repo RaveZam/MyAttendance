@@ -228,11 +228,14 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<int> enrollStudent(int subjectId, int studentId) {
+  Future<int> enrollStudent(int subjectId, int studentId) async {
     return into(subjectStudents).insert(
       SubjectStudentsCompanion.insert(
         subjectId: subjectId,
         studentId: studentId,
+        // Leave supabaseId null on initial enroll; it will be filled after upload.
+        supabaseId: const Value.absent(),
+        synced: const Value(false),
       ),
       mode: InsertMode.insertOrIgnore, // avoids duplicates
     );
@@ -291,6 +294,63 @@ class AppDatabase extends _$AppDatabase {
         '| lastModified=${subject.lastModified.toIso8601String()}',
       );
     }
+  }
+
+  /// Logs all entries in the subject-students pivot table to help debug enrollments.
+  Future<void> logAllSubjectStudents() async {
+    final allSubjectStudents = await select(subjectStudents).get();
+
+    if (allSubjectStudents.isEmpty) {
+      print('[AppDatabase] No subject_students found in the local database.');
+      return;
+    }
+
+    print('[AppDatabase] subject_students (${allSubjectStudents.length}):');
+    for (final entry in allSubjectStudents) {
+      print(
+        ' - localId=${entry.id} '
+        '| subjectId=${entry.subjectId} '
+        '| studentId=${entry.studentId} '
+        '| supabaseId=${entry.supabaseId ?? 'null'} '
+        '| synced=${entry.synced} '
+        '| lastModified=${entry.lastModified.toIso8601String()}',
+      );
+    }
+  }
+
+  /// Logs only the counts for attendance, sessions, and schedules to avoid noisy output.
+  Future<void> logAttendanceSessionScheduleCounts() async {
+    final attendanceCount = await _countAttendance();
+    final sessionCount = await _countSessions();
+    final scheduleCount = await _countSchedules();
+
+    print(
+      '[AppDatabase] Counts -> attendance=$attendanceCount, sessions=$sessionCount, schedules=$scheduleCount',
+    );
+  }
+
+  Future<int> _countAttendance() async {
+    final countExp = attendance.id.count();
+    final result = await (selectOnly(attendance)..addColumns([countExp]))
+        .map((row) => row.read(countExp))
+        .getSingleOrNull();
+    return result ?? 0;
+  }
+
+  Future<int> _countSessions() async {
+    final countExp = sessions.id.count();
+    final result = await (selectOnly(sessions)..addColumns([countExp]))
+        .map((row) => row.read(countExp))
+        .getSingleOrNull();
+    return result ?? 0;
+  }
+
+  Future<int> _countSchedules() async {
+    final countExp = schedules.id.count();
+    final result = await (selectOnly(schedules)..addColumns([countExp]))
+        .map((row) => row.read(countExp))
+        .getSingleOrNull();
+    return result ?? 0;
   }
 
   Future<void> updateStudent(
@@ -352,8 +412,38 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
-  Future<int> deleteSubject(int id) {
-    return (delete(subjects)..where((tbl) => tbl.id.equals(id))).go();
+  /// Deletes a subject and all related data (sessions, attendance, schedules, pivot rows).
+  /// This is explicit to avoid relying solely on FK cascade behavior across platforms.
+  Future<void> deleteSubject(int id) async {
+    await transaction(() async {
+      // Collect session IDs for this subject so we can delete attendance tied to them.
+      final sessionIdQuery =
+          await (selectOnly(sessions)
+                ..addColumns([sessions.id])
+                ..where(sessions.subjectId.equals(id)))
+              .map((row) => row.read(sessions.id)!)
+              .get();
+
+      if (sessionIdQuery.isNotEmpty) {
+        await (delete(
+          attendance,
+        )..where((t) => t.sessionId.isIn(sessionIdQuery))).go();
+      }
+
+      // Delete sessions for this subject.
+      await (delete(sessions)..where((tbl) => tbl.subjectId.equals(id))).go();
+
+      // Delete schedules for this subject.
+      await (delete(schedules)..where((tbl) => tbl.subjectId.equals(id))).go();
+
+      // Delete subject-student pivot rows for this subject.
+      await (delete(
+        subjectStudents,
+      )..where((tbl) => tbl.subjectId.equals(id))).go();
+
+      // Finally delete the subject itself.
+      await (delete(subjects)..where((tbl) => tbl.id.equals(id))).go();
+    });
   }
 
   Future<void> updateSubject(
@@ -553,5 +643,31 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteSchedule(int scheduleId) async {
     await (delete(schedules)..where((tbl) => tbl.id.equals(scheduleId))).go();
+  }
+
+  /// Marks all rows in all Drift tables as unsynced (synced = false).
+  /// This is used for debugging sync, forcing the next sync to treat everything as dirty.
+  Future<void> markAllDataUnsynced() async {
+    await transaction(() async {
+      await (update(terms)).write(TermsCompanion(synced: const Value(false)));
+      await (update(
+        students,
+      )).write(StudentsCompanion(synced: const Value(false)));
+      await (update(
+        subjects,
+      )).write(SubjectsCompanion(synced: const Value(false)));
+      await (update(
+        schedules,
+      )).write(SchedulesCompanion(synced: const Value(false)));
+      await (update(
+        sessions,
+      )).write(SessionsCompanion(synced: const Value(false)));
+      await (update(
+        attendance,
+      )).write(AttendanceCompanion(synced: const Value(false)));
+      await (update(
+        subjectStudents,
+      )).write(SubjectStudentsCompanion(synced: const Value(false)));
+    });
   }
 }
