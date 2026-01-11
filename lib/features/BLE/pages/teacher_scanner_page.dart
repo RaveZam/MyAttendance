@@ -183,11 +183,30 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
 
     _isProcessing = true;
     try {
+      // Determine if attendance should be marked as late
+      final session = await AppDatabase.instance.getSessionById(sessionDbId);
+      String status = 'present';
+      
+      if (session != null) {
+        final subjects = await AppDatabase.instance.getSubjectByID(session.subjectId);
+        if (subjects.isNotEmpty) {
+          final subject = subjects.first;
+          final attendanceTime = DateTime.now();
+          final sessionStartTime = session.startTime;
+          final lateAfterMinutes = subject.lateAfterMinutes;
+          final lateThreshold = sessionStartTime.add(Duration(minutes: lateAfterMinutes));
+          
+          if (attendanceTime.isAfter(lateThreshold)) {
+            status = 'late';
+          }
+        }
+      }
+
       await AppDatabase.instance.insertAttendance(
         AttendanceCompanion.insert(
           studentId: studentId,
           sessionId: sessionDbId,
-          status: 'present',
+          status: status,
           synced: false,
         ),
       );
@@ -200,7 +219,12 @@ class _TeacherScannerPageState extends State<TeacherScannerPage> {
         _processedStudentIds.add(studentId);
       });
 
-      _showSnack("Marked $studentName as present", Colors.green);
+      _showSnack(
+        status == 'late' 
+            ? "Marked $studentName as late" 
+            : "Marked $studentName as present",
+        status == 'late' ? Colors.orange : Colors.green,
+      );
     } catch (e) {
       debugPrint('Error inserting BLE attendance: $e');
       _showSnack("Failed to mark $studentName", Colors.red);

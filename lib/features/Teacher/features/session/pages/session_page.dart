@@ -84,7 +84,10 @@ class _SessionPageState extends State<SessionPage> {
 
   Future<int> _getAttendanceCount(int sessionId) async {
     final attendance = await db.getAttendanceBySessionID(sessionId);
-    return attendance.where((a) => a.status.toLowerCase() == 'present').length;
+    return attendance.where((a) {
+      final status = a.status.toLowerCase();
+      return status == 'present' || status == 'late';
+    }).length;
   }
 
   @override
@@ -364,7 +367,7 @@ class _SessionPageState extends State<SessionPage> {
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          '$count present',
+                                          '$count Attended',
                                           style: TextStyle(
                                             color: scheme.onSurface.withOpacity(
                                               0.8,

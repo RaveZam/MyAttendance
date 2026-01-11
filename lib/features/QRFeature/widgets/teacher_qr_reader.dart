@@ -87,12 +87,32 @@ class TeacherQrReaderState extends State<TeacherQrReader> {
                     return;
                   }
 
+                  // Determine if attendance should be marked as late
+                  final sessionId = int.parse(widget.sessionID);
+                  final session = await AppDatabase.instance.getSessionById(sessionId);
+                  String status = 'present';
+                  
+                  if (session != null) {
+                    final subjects = await AppDatabase.instance.getSubjectByID(session.subjectId);
+                    if (subjects.isNotEmpty) {
+                      final subject = subjects.first;
+                      final attendanceTime = DateTime.now();
+                      final sessionStartTime = session.startTime;
+                      final lateAfterMinutes = subject.lateAfterMinutes;
+                      final lateThreshold = sessionStartTime.add(Duration(minutes: lateAfterMinutes));
+                      
+                      if (attendanceTime.isAfter(lateThreshold)) {
+                        status = 'late';
+                      }
+                    }
+                  }
+
                   final attendance = await AppDatabase.instance
                       .insertAttendance(
                         AttendanceCompanion.insert(
                           studentId: data['student_id'],
-                          sessionId: int.parse(widget.sessionID),
-                          status: 'present',
+                          sessionId: sessionId,
+                          status: status,
                           synced: false,
                         ),
                       );

@@ -16,6 +16,7 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
   final db = AppDatabase.instance;
   bool _loading = true;
   List<AttendanceData> _attendances = [];
+  List<AttendanceData> _lateAttendances = [];
   List<Student> _enrolledStudents = [];
   List<Student> _absentStudents = [];
   Map<String, Student> _studentMap = {};
@@ -65,6 +66,12 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
           .toList();
       presentAttendances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+      // Filter late students
+      final lateAttendances = attendanceList
+          .where((a) => a.status.toLowerCase() == 'late')
+          .toList();
+      lateAttendances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
       // Filter absent students from attendance records
       final absentAttendances = attendanceList
           .where((a) => a.status.toLowerCase() == 'absent')
@@ -72,6 +79,9 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
 
       debugPrint(
         '✅ [PRESENT STUDENTS] Found ${presentAttendances.length} present students',
+      );
+      debugPrint(
+        '⏰ [LATE STUDENTS] Found ${lateAttendances.length} late students',
       );
       debugPrint(
         '❌ [ABSENT STUDENTS] Found ${absentAttendances.length} absent students',
@@ -85,11 +95,9 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
         debugPrint(
           '      📅 Created: ${attendance.createdAt.toIso8601String()}',
         );
-        if (attendance.lastModified != null) {
-          debugPrint(
-            '      🔄 Last Modified: ${attendance.lastModified!.toIso8601String()}',
-          );
-        }
+        debugPrint(
+          '      🔄 Last Modified: ${attendance.lastModified.toIso8601String()}',
+        );
       }
 
       // Create a map of studentId to attendance record for efficient lookup
@@ -123,6 +131,7 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
       setState(() {
         _enrolledStudents = enrolledStudents;
         _attendances = presentAttendances;
+        _lateAttendances = lateAttendances;
         _absentStudents = absentStudents;
         _studentMap = studentMap;
       });
@@ -181,7 +190,35 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
                     final studentName = student != null
                         ? '${student.firstName} ${student.lastName}'
                         : 'Unknown';
-                    return _AttendanceTile(data: a, studentName: studentName);
+                    return _AttendanceTile(
+                      data: a,
+                      studentName: studentName,
+                      status: 'present',
+                    );
+                  }).toList(),
+
+                  const SizedBox(height: 20),
+
+                  // Late List
+                  Text(
+                    'Late (${_lateAttendances.length})',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._lateAttendances.map((a) {
+                    final student = _studentMap[a.studentId];
+                    final studentName = student != null
+                        ? '${student.firstName} ${student.lastName}'
+                        : 'Unknown';
+                    return _AttendanceTile(
+                      data: a,
+                      studentName: studentName,
+                      status: 'late',
+                    );
                   }).toList(),
 
                   const SizedBox(height: 20),
@@ -207,20 +244,23 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
 
   Widget _buildSummaryRow(ColorScheme scheme) {
     final present = _attendances.length;
+    final late = _lateAttendances.length;
     final absent = _absentStudents.length;
     final total = _enrolledStudents.length;
     return Row(
       children: [
-        _summaryBox(scheme, present.toString(), 'Present'),
+        _summaryBox(scheme, present.toString(), 'Present', Colors.green.shade700),
         const SizedBox(width: 12),
-        _summaryBox(scheme, absent.toString(), 'Absent'),
+        _summaryBox(scheme, late.toString(), 'Late', Colors.orange.shade700),
         const SizedBox(width: 12),
-        _summaryBox(scheme, total.toString(), 'Total'),
+        _summaryBox(scheme, absent.toString(), 'Absent', Colors.red.shade700),
+        const SizedBox(width: 12),
+        _summaryBox(scheme, total.toString(), 'Total', null),
       ],
     );
   }
 
-  Widget _summaryBox(ColorScheme scheme, String value, String label) {
+  Widget _summaryBox(ColorScheme scheme, String value, String label, Color? valueColor) {
     return Expanded(
       child: Container(
         height: 72,
@@ -237,7 +277,7 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: scheme.onSurface,
+                color: valueColor ?? scheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -258,12 +298,24 @@ class _AttendancePerSessionPageState extends State<AttendancePerSessionPage> {
 class _AttendanceTile extends StatelessWidget {
   final AttendanceData data;
   final String studentName;
-  const _AttendanceTile({required this.data, required this.studentName});
+  final String status;
+  const _AttendanceTile({
+    required this.data,
+    required this.studentName,
+    required this.status,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final time = DateFormat('h:mm a').format(data.createdAt.toLocal());
+    final isLate = status.toLowerCase() == 'late';
+    final statusColor = isLate ? Colors.orange : Colors.green;
+    final iconColor = isLate ? Colors.orange.shade700 : scheme.primary;
+    final backgroundColor = isLate
+        ? Colors.orange.withOpacity(0.1)
+        : scheme.primary.withOpacity(0.1);
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
@@ -278,10 +330,13 @@ class _AttendanceTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: scheme.primary.withOpacity(0.1),
+              color: backgroundColor,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(Icons.person, color: scheme.primary),
+            child: Icon(
+              isLate ? Icons.access_time : Icons.person,
+              color: iconColor,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -309,14 +364,14 @@ class _AttendanceTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Present',
+              isLate ? 'Late' : 'Present',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.green.shade700,
+                color: statusColor.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),

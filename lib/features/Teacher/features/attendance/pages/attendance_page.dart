@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:myattendance/core/database/app_database.dart';
@@ -81,8 +82,24 @@ class _AttendancePageState extends State<AttendancePage> {
       '📋 [ATTENDANCE RECORDS] Found ${attendance.length} attendance records',
     );
 
+    // Check and update attendance records for late status
+    if (sessionDetails != null && subjectDetails != null) {
+      await _checkAndUpdateLateAttendance(attendance);
+      // Reload attendance after updates
+      final updatedAttendance = await AppDatabase.instance.getAttendanceBySessionID(
+        int.parse(widget.sessionID),
+      );
+      setState(() {
+        _attendance = updatedAttendance;
+      });
+    } else {
+      setState(() {
+        _attendance = attendance;
+      });
+    }
+
     // Log each attendance record
-    for (var record in attendance) {
+    for (var record in _attendance) {
       debugPrint(
         '   📝 Attendance ${record.id}: Student ${record.studentId} - ${record.status}',
       );
@@ -92,10 +109,67 @@ class _AttendancePageState extends State<AttendancePage> {
       );
     }
 
-    setState(() {
-      _attendance = attendance;
-    });
     debugPrint('✅ [ATTENDANCE LOADING] Attendance data loaded successfully');
+  }
+
+  /// Checks if attendance should be marked as late based on session start time and lateAfterMinutes
+  bool _isAttendanceLate(DateTime attendanceTime, DateTime sessionStartTime, int lateAfterMinutes) {
+    final lateThreshold = sessionStartTime.add(Duration(minutes: lateAfterMinutes));
+    return attendanceTime.isAfter(lateThreshold);
+  }
+
+  /// Checks existing attendance records and updates them to "late" if they exceed the late threshold
+  Future<void> _checkAndUpdateLateAttendance(List<AttendanceData> attendance) async {
+    if (sessionDetails == null || subjectDetails == null) return;
+
+    final sessionStartTime = sessionDetails!.startTime;
+    final lateAfterMinutes = subjectDetails!.lateAfterMinutes;
+    final db = AppDatabase.instance;
+
+    for (var record in attendance) {
+      // Only check records that are currently marked as "present"
+      if (record.status.toLowerCase() == 'present') {
+        final isLate = _isAttendanceLate(
+          record.createdAt,
+          sessionStartTime,
+          lateAfterMinutes,
+        );
+
+        if (isLate) {
+          debugPrint(
+            '⏰ [LATE CHECK] Updating attendance ${record.id} for student ${record.studentId} from present to late',
+          );
+          try {
+            await (db.update(db.attendance)
+                  ..where((t) => t.id.equals(record.id)))
+                .write(
+              AttendanceCompanion(
+                status: const Value('late'),
+                lastModified: Value(DateTime.now()),
+                synced: const Value(false),
+              ),
+            );
+          } catch (e) {
+            debugPrint('❌ [LATE CHECK] Error updating attendance ${record.id}: $e');
+          }
+        }
+      }
+    }
+  }
+
+  /// Determines the attendance status (present or late) based on current time
+  String _determineAttendanceStatus(DateTime attendanceTime) {
+    if (sessionDetails == null || subjectDetails == null) {
+      return 'present';
+    }
+
+    final sessionStartTime = sessionDetails!.startTime;
+    final lateAfterMinutes = subjectDetails!.lateAfterMinutes;
+
+    if (_isAttendanceLate(attendanceTime, sessionStartTime, lateAfterMinutes)) {
+      return 'late';
+    }
+    return 'present';
   }
 
   void getSessionDetails() async {
@@ -403,6 +477,27 @@ class _AttendancePageState extends State<AttendancePage> {
                         fontSize: 13,
                       ),
                     ),
+                    if (subjectDetails != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.red.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Late After: ${subjectDetails!.lateAfterMinutes} ${subjectDetails!.lateAfterMinutes == 1 ? 'minute' : 'minutes'}',
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (_isResumingSession) ...[
                       const SizedBox(height: 4),
                       Container(
@@ -575,12 +670,14 @@ class _AttendancePageState extends State<AttendancePage> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            'Select Student',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurface,
+                          Expanded(
+                            child: Text(
+                              'Select Student',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
                             ),
                           ),
                         ],
@@ -588,6 +685,7 @@ class _AttendancePageState extends State<AttendancePage> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<Student>(
                         value: _selectedStudent,
+                        isExpanded: true,
                         decoration: InputDecoration(
                           labelText: _students.isEmpty
                               ? 'Loading students...'
@@ -611,6 +709,7 @@ class _AttendancePageState extends State<AttendancePage> {
                                         alpha: 0.5,
                                       ),
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ]
@@ -619,6 +718,7 @@ class _AttendancePageState extends State<AttendancePage> {
                                   value: student,
                                   child: Text(
                                     '${student.firstName} ${student.lastName} (${student.studentId})',
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 );
                               }).toList(),
@@ -681,16 +781,19 @@ class _AttendancePageState extends State<AttendancePage> {
                                 return;
                               }
 
-                              final alreadyPresent = _attendance.any(
+                              final alreadyRecorded = _attendance.any(
                                 (a) =>
                                     a.studentId == _selectedStudent!.studentId,
                               );
 
-                              if (alreadyPresent) {
+                              if (alreadyRecorded) {
+                                final existingRecord = _attendance.firstWhere(
+                                  (a) => a.studentId == _selectedStudent!.studentId,
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'This student is already marked as present.',
+                                      'This student is already marked as ${existingRecord.status}.',
                                     ),
                                   ),
                                 );
@@ -698,11 +801,14 @@ class _AttendancePageState extends State<AttendancePage> {
                               }
 
                               try {
+                                final attendanceTime = DateTime.now();
+                                final status = _determineAttendanceStatus(attendanceTime);
+
                                 await AppDatabase.instance.insertAttendance(
                                   AttendanceCompanion.insert(
                                     studentId: _selectedStudent!.studentId,
                                     sessionId: int.parse(widget.sessionID),
-                                    status: 'present',
+                                    status: status,
                                     synced: false,
                                   ),
                                 );
@@ -711,9 +817,11 @@ class _AttendancePageState extends State<AttendancePage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Marked ${_selectedStudent!.firstName} ${_selectedStudent!.lastName} as present.',
+                                        status == 'late'
+                                            ? 'Marked ${_selectedStudent!.firstName} ${_selectedStudent!.lastName} as late.'
+                                            : 'Marked ${_selectedStudent!.firstName} ${_selectedStudent!.lastName} as present.',
                                       ),
-                                      backgroundColor: Colors.green,
+                                      backgroundColor: status == 'late' ? Colors.orange : Colors.green,
                                     ),
                                   );
                                 }
@@ -760,6 +868,11 @@ class _AttendancePageState extends State<AttendancePage> {
                       .where((a) => a.status.toLowerCase() == 'present')
                       .length;
 
+                  // Calculate late students
+                  final lateCount = _attendance
+                      .where((a) => a.status.toLowerCase() == 'late')
+                      .length;
+
                   // Calculate pending students (total enrolled - students with attendance records)
                   final studentsWithAttendance = _attendance
                       .map((a) => a.studentId)
@@ -800,6 +913,11 @@ class _AttendancePageState extends State<AttendancePage> {
                               label: 'Present',
                               value: presentCount.toString(),
                               textColor: Colors.green.shade800,
+                            ),
+                            _StatItem(
+                              label: 'Late',
+                              value: lateCount.toString(),
+                              textColor: Colors.orange.shade700,
                             ),
                             _StatItem(
                               label: 'Pending',
