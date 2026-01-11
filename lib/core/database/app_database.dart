@@ -332,6 +332,24 @@ class AppDatabase extends _$AppDatabase {
     return query.map((row) => row.readTable(students)).get();
   }
 
+  /// Gets a map of studentId (String) to enrollment date (DateTime) for students in a subject
+  Future<Map<String, DateTime>> getStudentEnrollmentDates(int subjectId) async {
+    final query = select(subjectStudents).join([
+      innerJoin(students, students.id.equalsExp(subjectStudents.studentId)),
+    ])..where(subjectStudents.subjectId.equals(subjectId));
+
+    final results = await query.get();
+    final enrollmentMap = <String, DateTime>{};
+
+    for (final row in results) {
+      final student = row.readTable(students);
+      final enrollment = row.readTable(subjectStudents);
+      enrollmentMap[student.studentId] = enrollment.createdAt;
+    }
+
+    return enrollmentMap;
+  }
+
   Future<List<Student>> getAllStudents() => select(students).get();
 
   Future<void> logAllStudents() async {

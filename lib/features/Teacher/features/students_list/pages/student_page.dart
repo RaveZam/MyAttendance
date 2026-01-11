@@ -106,6 +106,10 @@ class _StudentPageState extends State<StudentPage> {
           ? <AttendanceData>[]
           : await AppDatabase.instance.getAttendanceBySessionIds(sessionIds);
 
+      // Get enrollment dates for all students
+      final enrollmentDates = await AppDatabase.instance
+          .getStudentEnrollmentDates(subjectId);
+
       final summaryMap = <String, StudentAttendanceSummary>{};
       var totalAttendedRecords = 0;
 
@@ -120,9 +124,29 @@ class _StudentPageState extends State<StudentPage> {
         final lateCount = records
             .where((record) => _matchesStatus(record.status, 'late'))
             .length;
-        final absentCount = records
+        final recordedAbsentCount = records
             .where((record) => _matchesStatus(record.status, 'absent'))
             .length;
+
+        // Get enrollment date for this student
+        final enrollmentDate = enrollmentDates[student.studentId];
+
+        // Count sessions that occurred before the student was enrolled as absent
+        // If enrollment date is not found, assume student was enrolled from the beginning
+        // (so no sessions are counted as absent due to late enrollment)
+        int sessionsBeforeEnrollment = 0;
+        if (enrollmentDate != null) {
+          for (final session in sessionsData) {
+            // If session occurred before enrollment, count it as absent
+            // This handles the case where a student is added after some sessions have already occurred
+            if (session.startTime.isBefore(enrollmentDate)) {
+              sessionsBeforeEnrollment++;
+            }
+          }
+        }
+
+        // Total absent count = recorded absences + sessions before enrollment
+        final absentCount = recordedAbsentCount + sessionsBeforeEnrollment;
 
         totalAttendedRecords += presentCount + lateCount;
 
