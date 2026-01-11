@@ -2,42 +2,25 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 class WifiChecker {
+  /// Check if WiFi is available (specifically WiFi, not mobile data)
   Future<bool> checkWiFi() async {
-    final List<ConnectivityResult> connectivityResult = await (Connectivity()
-        .checkConnectivity());
+    final List<ConnectivityResult> connectivityResult =
+        await (Connectivity().checkConnectivity());
 
-    // This condition is for demo purposes only to explain every connection type.
-    // Use conditions which work for your requirements.
-    if (connectivityResult.contains(ConnectivityResult.mobile)) {
-      // Mobile network available.
-      debugPrint('Mobile network available.');
-      return true;
-    } else if (connectivityResult.contains(ConnectivityResult.wifi)) {
-      // Wi-fi is available.
-      debugPrint('Wi-fi is available.');
+    // Only return true for WiFi connections
+    if (connectivityResult.contains(ConnectivityResult.wifi)) {
+      debugPrint('✅ WiFi is available.');
       return true;
       // Note for Android:
       // When both mobile and Wi-Fi are turned on system will return Wi-Fi only as active network type
-    } else if (connectivityResult.contains(ConnectivityResult.ethernet)) {
-      // Ethernet connection available.
-      return true;
-    } else if (connectivityResult.contains(ConnectivityResult.vpn)) {
-      // Vpn connection active.
-      return true;
-      // Note for iOS and macOS:
-      // There is no separate network interface type for [vpn].
-      // It returns [other] on any device (also simulator)
-    } else if (connectivityResult.contains(ConnectivityResult.bluetooth)) {
-      // Bluetooth connection available.
-      return true;
-    } else if (connectivityResult.contains(ConnectivityResult.other)) {
-      // Connected to a network which is not in the above mentioned networks.
-      return true;
     } else if (connectivityResult.contains(ConnectivityResult.none)) {
       // No available network types
-      debugPrint('No available network types');
+      debugPrint('❌ No network connection available');
+      return false;
+    } else {
+      // Mobile, ethernet, VPN, bluetooth, or other connections are not WiFi
+      debugPrint('⚠️ WiFi not available (current: $connectivityResult)');
       return false;
     }
-    return false;
   }
 }
