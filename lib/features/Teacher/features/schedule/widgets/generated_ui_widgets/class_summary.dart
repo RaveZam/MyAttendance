@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:myattendance/core/database/app_database.dart';
 
 class ClassSummaryCard extends StatelessWidget {
   final String classID;

@@ -387,6 +387,18 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lateAfterMinutesMeta = const VerificationMeta(
+    'lateAfterMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> lateAfterMinutes = GeneratedColumn<int>(
+    'late_after_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(20),
+  );
   static const VerificationMeta _yearLevelMeta = const VerificationMeta(
     'yearLevel',
   );
@@ -480,6 +492,7 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
     id,
     subjectCode,
     subjectName,
+    lateAfterMinutes,
     yearLevel,
     section,
     profId,
@@ -525,6 +538,15 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
       );
     } else if (isInserting) {
       context.missing(_subjectNameMeta);
+    }
+    if (data.containsKey('late_after_minutes')) {
+      context.handle(
+        _lateAfterMinutesMeta,
+        lateAfterMinutes.isAcceptableOrUnknown(
+          data['late_after_minutes']!,
+          _lateAfterMinutesMeta,
+        ),
+      );
     }
     if (data.containsKey('year_level')) {
       context.handle(
@@ -608,6 +630,10 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         DriftSqlType.string,
         data['${effectivePrefix}subject_name'],
       )!,
+      lateAfterMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}late_after_minutes'],
+      )!,
       yearLevel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}year_level'],
@@ -653,6 +679,7 @@ class Subject extends DataClass implements Insertable<Subject> {
   final int id;
   final String subjectCode;
   final String subjectName;
+  final int lateAfterMinutes;
   final String yearLevel;
   final String section;
   final String profId;
@@ -665,6 +692,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     required this.id,
     required this.subjectCode,
     required this.subjectName,
+    required this.lateAfterMinutes,
     required this.yearLevel,
     required this.section,
     required this.profId,
@@ -680,6 +708,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     map['id'] = Variable<int>(id);
     map['subject_code'] = Variable<String>(subjectCode);
     map['subject_name'] = Variable<String>(subjectName);
+    map['late_after_minutes'] = Variable<int>(lateAfterMinutes);
     map['year_level'] = Variable<String>(yearLevel);
     map['section'] = Variable<String>(section);
     map['prof_id'] = Variable<String>(profId);
@@ -698,6 +727,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       id: Value(id),
       subjectCode: Value(subjectCode),
       subjectName: Value(subjectName),
+      lateAfterMinutes: Value(lateAfterMinutes),
       yearLevel: Value(yearLevel),
       section: Value(section),
       profId: Value(profId),
@@ -720,6 +750,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       id: serializer.fromJson<int>(json['id']),
       subjectCode: serializer.fromJson<String>(json['subjectCode']),
       subjectName: serializer.fromJson<String>(json['subjectName']),
+      lateAfterMinutes: serializer.fromJson<int>(json['lateAfterMinutes']),
       yearLevel: serializer.fromJson<String>(json['yearLevel']),
       section: serializer.fromJson<String>(json['section']),
       profId: serializer.fromJson<String>(json['profId']),
@@ -737,6 +768,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       'id': serializer.toJson<int>(id),
       'subjectCode': serializer.toJson<String>(subjectCode),
       'subjectName': serializer.toJson<String>(subjectName),
+      'lateAfterMinutes': serializer.toJson<int>(lateAfterMinutes),
       'yearLevel': serializer.toJson<String>(yearLevel),
       'section': serializer.toJson<String>(section),
       'profId': serializer.toJson<String>(profId),
@@ -752,6 +784,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     int? id,
     String? subjectCode,
     String? subjectName,
+    int? lateAfterMinutes,
     String? yearLevel,
     String? section,
     String? profId,
@@ -764,6 +797,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     id: id ?? this.id,
     subjectCode: subjectCode ?? this.subjectCode,
     subjectName: subjectName ?? this.subjectName,
+    lateAfterMinutes: lateAfterMinutes ?? this.lateAfterMinutes,
     yearLevel: yearLevel ?? this.yearLevel,
     section: section ?? this.section,
     profId: profId ?? this.profId,
@@ -782,6 +816,9 @@ class Subject extends DataClass implements Insertable<Subject> {
       subjectName: data.subjectName.present
           ? data.subjectName.value
           : this.subjectName,
+      lateAfterMinutes: data.lateAfterMinutes.present
+          ? data.lateAfterMinutes.value
+          : this.lateAfterMinutes,
       yearLevel: data.yearLevel.present ? data.yearLevel.value : this.yearLevel,
       section: data.section.present ? data.section.value : this.section,
       profId: data.profId.present ? data.profId.value : this.profId,
@@ -803,6 +840,7 @@ class Subject extends DataClass implements Insertable<Subject> {
           ..write('id: $id, ')
           ..write('subjectCode: $subjectCode, ')
           ..write('subjectName: $subjectName, ')
+          ..write('lateAfterMinutes: $lateAfterMinutes, ')
           ..write('yearLevel: $yearLevel, ')
           ..write('section: $section, ')
           ..write('profId: $profId, ')
@@ -820,6 +858,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     id,
     subjectCode,
     subjectName,
+    lateAfterMinutes,
     yearLevel,
     section,
     profId,
@@ -836,6 +875,7 @@ class Subject extends DataClass implements Insertable<Subject> {
           other.id == this.id &&
           other.subjectCode == this.subjectCode &&
           other.subjectName == this.subjectName &&
+          other.lateAfterMinutes == this.lateAfterMinutes &&
           other.yearLevel == this.yearLevel &&
           other.section == this.section &&
           other.profId == this.profId &&
@@ -850,6 +890,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
   final Value<int> id;
   final Value<String> subjectCode;
   final Value<String> subjectName;
+  final Value<int> lateAfterMinutes;
   final Value<String> yearLevel;
   final Value<String> section;
   final Value<String> profId;
@@ -862,6 +903,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     this.id = const Value.absent(),
     this.subjectCode = const Value.absent(),
     this.subjectName = const Value.absent(),
+    this.lateAfterMinutes = const Value.absent(),
     this.yearLevel = const Value.absent(),
     this.section = const Value.absent(),
     this.profId = const Value.absent(),
@@ -875,6 +917,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     this.id = const Value.absent(),
     required String subjectCode,
     required String subjectName,
+    this.lateAfterMinutes = const Value.absent(),
     required String yearLevel,
     required String section,
     required String profId,
@@ -894,6 +937,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Expression<int>? id,
     Expression<String>? subjectCode,
     Expression<String>? subjectName,
+    Expression<int>? lateAfterMinutes,
     Expression<String>? yearLevel,
     Expression<String>? section,
     Expression<String>? profId,
@@ -907,6 +951,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       if (id != null) 'id': id,
       if (subjectCode != null) 'subject_code': subjectCode,
       if (subjectName != null) 'subject_name': subjectName,
+      if (lateAfterMinutes != null) 'late_after_minutes': lateAfterMinutes,
       if (yearLevel != null) 'year_level': yearLevel,
       if (section != null) 'section': section,
       if (profId != null) 'prof_id': profId,
@@ -922,6 +967,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Value<int>? id,
     Value<String>? subjectCode,
     Value<String>? subjectName,
+    Value<int>? lateAfterMinutes,
     Value<String>? yearLevel,
     Value<String>? section,
     Value<String>? profId,
@@ -935,6 +981,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       id: id ?? this.id,
       subjectCode: subjectCode ?? this.subjectCode,
       subjectName: subjectName ?? this.subjectName,
+      lateAfterMinutes: lateAfterMinutes ?? this.lateAfterMinutes,
       yearLevel: yearLevel ?? this.yearLevel,
       section: section ?? this.section,
       profId: profId ?? this.profId,
@@ -957,6 +1004,9 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     }
     if (subjectName.present) {
       map['subject_name'] = Variable<String>(subjectName.value);
+    }
+    if (lateAfterMinutes.present) {
+      map['late_after_minutes'] = Variable<int>(lateAfterMinutes.value);
     }
     if (yearLevel.present) {
       map['year_level'] = Variable<String>(yearLevel.value);
@@ -991,6 +1041,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
           ..write('id: $id, ')
           ..write('subjectCode: $subjectCode, ')
           ..write('subjectName: $subjectName, ')
+          ..write('lateAfterMinutes: $lateAfterMinutes, ')
           ..write('yearLevel: $yearLevel, ')
           ..write('section: $section, ')
           ..write('profId: $profId, ')
@@ -4359,6 +4410,7 @@ typedef $$SubjectsTableCreateCompanionBuilder =
       Value<int> id,
       required String subjectCode,
       required String subjectName,
+      Value<int> lateAfterMinutes,
       required String yearLevel,
       required String section,
       required String profId,
@@ -4373,6 +4425,7 @@ typedef $$SubjectsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> subjectCode,
       Value<String> subjectName,
+      Value<int> lateAfterMinutes,
       Value<String> yearLevel,
       Value<String> section,
       Value<String> profId,
@@ -4487,6 +4540,11 @@ class $$SubjectsTableFilterComposer
 
   ColumnFilters<String> get subjectName => $composableBuilder(
     column: $table.subjectName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lateAfterMinutes => $composableBuilder(
+    column: $table.lateAfterMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4648,6 +4706,11 @@ class $$SubjectsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get lateAfterMinutes => $composableBuilder(
+    column: $table.lateAfterMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get yearLevel => $composableBuilder(
     column: $table.yearLevel,
     builder: (column) => ColumnOrderings(column),
@@ -4726,6 +4789,11 @@ class $$SubjectsTableAnnotationComposer
 
   GeneratedColumn<String> get subjectName => $composableBuilder(
     column: $table.subjectName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lateAfterMinutes => $composableBuilder(
+    column: $table.lateAfterMinutes,
     builder: (column) => column,
   );
 
@@ -4889,6 +4957,7 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> subjectCode = const Value.absent(),
                 Value<String> subjectName = const Value.absent(),
+                Value<int> lateAfterMinutes = const Value.absent(),
                 Value<String> yearLevel = const Value.absent(),
                 Value<String> section = const Value.absent(),
                 Value<String> profId = const Value.absent(),
@@ -4901,6 +4970,7 @@ class $$SubjectsTableTableManager
                 id: id,
                 subjectCode: subjectCode,
                 subjectName: subjectName,
+                lateAfterMinutes: lateAfterMinutes,
                 yearLevel: yearLevel,
                 section: section,
                 profId: profId,
@@ -4915,6 +4985,7 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String subjectCode,
                 required String subjectName,
+                Value<int> lateAfterMinutes = const Value.absent(),
                 required String yearLevel,
                 required String section,
                 required String profId,
@@ -4927,6 +4998,7 @@ class $$SubjectsTableTableManager
                 id: id,
                 subjectCode: subjectCode,
                 subjectName: subjectName,
+                lateAfterMinutes: lateAfterMinutes,
                 yearLevel: yearLevel,
                 section: section,
                 profId: profId,

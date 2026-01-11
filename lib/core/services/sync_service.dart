@@ -100,6 +100,7 @@ class SyncService {
         'subject_name': (s as dynamic).subjectName,
         'year_level': (s as dynamic).yearLevel,
         'section': (s as dynamic).section,
+        'lateAfterMinutes': (s as dynamic).lateAfterMinutes,
         // send local refs; we'll resolve to server UUIDs in the sync helper
         'prof_local_id': (s as dynamic).profId,
         'term_local_id': (s as dynamic).termId,
@@ -1466,6 +1467,7 @@ class SyncService {
                   subjectName: Value(subjectName ?? ''),
                   yearLevel: Value(so['year_level'] ?? ''),
                   section: Value(so['section'] ?? ''),
+                  lateAfterMinutes: Value(so['lateAfterMinutes'] as int? ?? 20),
                   profId: Value(so['prof_id'] ?? profId),
                   termId: Value(localTermId ?? 0),
                   supabaseId: supabaseUuid != null
@@ -1501,6 +1503,9 @@ class SyncService {
                 subjectName: Value(subjectName ?? local.subjectName),
                 yearLevel: Value(so['year_level'] ?? local.yearLevel),
                 section: Value(so['section'] ?? local.section),
+                lateAfterMinutes: Value(
+                  so['lateAfterMinutes'] as int? ?? local.lateAfterMinutes,
+                ),
                 supabaseId: supabaseUuid != null
                     ? Value(supabaseUuid)
                     : Value(local.supabaseId),

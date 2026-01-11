@@ -5,6 +5,7 @@ import 'package:myattendance/features/Teacher/features/class_details/widgets/cla
 import 'package:myattendance/features/Teacher/features/schedule/pages/add_subject_page.dart';
 import 'package:myattendance/features/Teacher/features/attendance/pages/attendance_page.dart';
 import 'package:myattendance/features/Teacher/features/session/pages/session_page.dart';
+import 'package:myattendance/features/Teacher/features/class_details/pages/class_settings_page.dart';
 import 'package:drift/drift.dart' as drift;
 
 class ClassDetailsPage extends StatefulWidget {
@@ -668,14 +669,21 @@ class _FeatureListSection extends StatelessWidget {
             trailing: '',
             onTap: () => debugPrint('Reports'),
           ),
-          // const _Divider(),
-          // _FeatureListItem(
-          //   icon: Icons.settings,
-          //   title: 'Class Settings',
-          //   description: 'Configure class preferences',
-          //   trailing: '',
-          //   onTap: () => debugPrint('Class Settings'),
-          // ),
+          const _Divider(),
+          _FeatureListItem(
+            icon: Icons.settings,
+            title: 'Class Settings',
+            description: 'Configure class preferences',
+            trailing: '',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ClassSettingsPage(classID: classID),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

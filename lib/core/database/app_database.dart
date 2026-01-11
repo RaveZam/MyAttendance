@@ -44,6 +44,7 @@ class Subjects extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get subjectCode => text()();
   TextColumn get subjectName => text()();
+  IntColumn get lateAfterMinutes => integer().withDefault(const Constant(20))();
   TextColumn get yearLevel => text()();
   TextColumn get section => text()();
   TextColumn get profId => text()();
@@ -148,7 +149,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -623,6 +624,16 @@ class AppDatabase extends _$AppDatabase {
         yearLevel: Value(yearLevel),
         section: Value(section),
         termId: Value(termId),
+        lastModified: Value(DateTime.now()),
+        synced: Value(false), // Mark as unsynced after update
+      ),
+    );
+  }
+
+  Future<void> updateLateTime(int id, int lateAfterMinutes) async {
+    await (update(subjects)..where((tbl) => tbl.id.equals(id))).write(
+      SubjectsCompanion(
+        lateAfterMinutes: Value(lateAfterMinutes),
         lastModified: Value(DateTime.now()),
         synced: Value(false), // Mark as unsynced after update
       ),
