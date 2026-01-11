@@ -19,6 +19,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
   DateTime? _start;
   DateTime? _end;
   bool _hasOngoing = false;
+  int _studentCount = 0;
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
           _liveSubject = null;
           _start = null;
           _end = null;
+          _studentCount = 0;
         });
         return;
       }
@@ -88,6 +90,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
           _liveSubject = null;
           _start = null;
           _end = null;
+          _studentCount = 0;
         });
         return;
       }
@@ -106,16 +109,19 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
         _end = currentEnd;
       });
 
-      // Check ongoing session for dynamic button label
+      // Check ongoing session for dynamic button label and get student count
       if (subj != null) {
         final ongoing = await db.checkForOngoingSession(subj.id);
+        final students = await db.getStudentsInSubject(subj.id);
         if (!mounted) return;
         setState(() {
           _hasOngoing = ongoing.isNotEmpty;
+          _studentCount = students.length;
         });
       } else {
         setState(() {
           _hasOngoing = false;
+          _studentCount = 0;
         });
       }
     } catch (e) {
@@ -126,6 +132,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
         _liveSubject = null;
         _start = null;
         _end = null;
+        _studentCount = 0;
       });
     }
   }
@@ -279,7 +286,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
   @override
   Widget build(BuildContext context) {
     if (_liveSchedule == null || _liveSubject == null) {
-      return const SizedBox.shrink();
+      return const _NoLiveClassCard();
     }
 
     return _CurrentClassCard(
@@ -288,6 +295,7 @@ class _DisplayCurrentClassState extends State<DisplayCurrentClass>
       start: _start,
       end: _end,
       hasOngoing: _hasOngoing,
+      studentCount: _studentCount,
       onStartSession: () => _startOrResumeSession(context, _liveSubject!),
       onViewDetails: () => _viewSubjectDetails(context, _liveSubject!),
     );
@@ -410,6 +418,7 @@ class _CurrentClassCard extends StatelessWidget {
   final DateTime? start;
   final DateTime? end;
   final bool hasOngoing;
+  final int studentCount;
   final VoidCallback onStartSession;
   final VoidCallback onViewDetails;
 
@@ -419,6 +428,7 @@ class _CurrentClassCard extends StatelessWidget {
     required this.start,
     required this.end,
     required this.hasOngoing,
+    required this.studentCount,
     required this.onStartSession,
     required this.onViewDetails,
   });
@@ -560,9 +570,9 @@ class _CurrentClassCard extends StatelessWidget {
 
   String _buildSubtitle(Schedule s) {
     final hasRoom = s.room?.isNotEmpty == true;
-    final roomText = hasRoom ? 'Room ${s.room}' : '';
-    // Placeholder students count to match the reference UI
-    final students = '• 28 students';
+    final roomText = hasRoom ? '${s.room}' : '';
+    final students =
+        '• $studentCount ${studentCount == 1 ? 'student' : 'students'}';
     if (roomText.isEmpty) return students.replaceFirst('• ', '');
     return '$roomText $students';
   }
@@ -571,6 +581,59 @@ class _CurrentClassCard extends StatelessWidget {
     if (start == null || end == null) return '';
     final f = DateFormat('h:mm a');
     return '${f.format(start)} - ${f.format(end)}';
+  }
+}
+
+class _NoLiveClassCard extends StatelessWidget {
+  const _NoLiveClassCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            scheme.primary.withOpacity(0.95),
+            scheme.secondary.withOpacity(0.95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'No Live Class',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

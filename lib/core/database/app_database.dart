@@ -103,6 +103,27 @@ class SubjectStudents extends Table {
       dateTime().withDefault(currentDateAndTime)();
 }
 
+/// Queue of remote deletions that still need to be pushed to Supabase.
+/// Each row represents: "Delete this record from <tableName> where the
+/// remote identifier matches <supabaseId>."
+class DeletionQueue extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Supabase table name, e.g. "students", "subject_offerings",
+  /// "schedules", "sessions", "attendance", "subject_students".
+  TextColumn get targetTable => text()();
+
+  /// Identifier used when deleting on Supabase.
+  /// For most tables this is the remote PK "id".
+  /// For "students" we use the remote "auth_id" (taken from local Students.supabaseId).
+  TextColumn get supabaseId => text()();
+
+  /// Not currently used in logic, but kept for consistency with other tables.
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 @DriftDatabase(
   tables: [
     Schedules,
@@ -112,6 +133,7 @@ class SubjectStudents extends Table {
     SubjectStudents,
     Attendance,
     Sessions,
+    DeletionQueue,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -126,7 +148,20 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      // Schema v1 -> v2: introduce DeletionQueue table.
+      if (from < 2) {
+        await m.createTable(deletionQueue);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
@@ -135,6 +170,51 @@ class AppDatabase extends _$AppDatabase {
         databaseDirectory: getApplicationSupportDirectory,
       ),
     );
+  }
+
+  /// Inserts a row into the deletion queue.
+  /// [tableName] must be the Supabase table name.
+  /// [supabaseId] is the identifier used for the delete filter on Supabase.
+  Future<int> enqueueDeletion({
+    required String tableName,
+    required String supabaseId,
+  }) async {
+    if (supabaseId.isEmpty) return 0;
+    return into(deletionQueue).insert(
+      DeletionQueueCompanion.insert(
+        targetTable: tableName,
+        supabaseId: supabaseId,
+      ),
+    );
+  }
+
+  /// Logs all pending deletion-queue items for debugging.
+  Future<void> logDeletionQueue() async {
+    final items = await select(deletionQueue).get();
+
+    if (items.isEmpty) {
+      print('[AppDatabase] DeletionQueue is empty.');
+      return;
+    }
+
+    print('[AppDatabase] DeletionQueue (${items.length}):');
+    for (final item in items) {
+      print(
+        ' - id=${item.id} '
+        '| tableName=${item.targetTable} '
+        '| supabaseId=${item.supabaseId} '
+        '| createdAt=${item.createdAt.toIso8601String()}',
+      );
+    }
+  }
+
+  /// Helper to enqueue a deletion only if [supabaseId] is non-null and non-empty.
+  Future<void> _enqueueIfSupabaseIdNotNull({
+    required String tableName,
+    required String? supabaseId,
+  }) async {
+    if (supabaseId == null || supabaseId.isEmpty) return;
+    await enqueueDeletion(tableName: tableName, supabaseId: supabaseId);
   }
 
   Future<List<Session>> getSessionByID(int sessionId) {
@@ -382,7 +462,23 @@ class AppDatabase extends _$AppDatabase {
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (student != null) {
+        // Enqueue remote deletion for the "students" Supabase row.
+        // We use auth_id (stored in local Students.supabaseId) as the delete key.
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'students',
+          supabaseId: student.supabaseId,
+        );
+
         // Delete attendance records for this student (studentId is stored as text)
+        final attendanceRows = await (select(
+          attendance,
+        )..where((tbl) => tbl.studentId.equals(student.studentId))).get();
+        for (final row in attendanceRows) {
+          await _enqueueIfSupabaseIdNotNull(
+            tableName: 'attendance',
+            supabaseId: row.supabaseId,
+          );
+        }
         await (delete(
           attendance,
         )..where((tbl) => tbl.studentId.equals(student.studentId))).go();
@@ -390,6 +486,15 @@ class AppDatabase extends _$AppDatabase {
 
       // Explicitly delete subject-student relationships for this student
       // (in addition to the ON DELETE CASCADE, to be safe)
+      final subjectStudentRows = await (select(
+        subjectStudents,
+      )..where((t) => t.studentId.equals(id))).get();
+      for (final row in subjectStudentRows) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'subject_students',
+          supabaseId: row.supabaseId,
+        );
+      }
       await (delete(
         subjectStudents,
       )..where((t) => t.studentId.equals(id))).go();
@@ -400,6 +505,17 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteStudent(int id) async {
+    // Ensure we enqueue a deletion for the student even if this helper is used
+    // without the relation-aware variant.
+    final student = await (select(
+      students,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (student != null) {
+      await _enqueueIfSupabaseIdNotNull(
+        tableName: 'students',
+        supabaseId: student.supabaseId,
+      );
+    }
     await (delete(students)..where((tbl) => tbl.id.equals(id))).go();
   }
 
@@ -425,23 +541,69 @@ class AppDatabase extends _$AppDatabase {
               .get();
 
       if (sessionIdQuery.isNotEmpty) {
+        // Enqueue deletions for related attendance rows.
+        final relatedAttendance = await (select(
+          attendance,
+        )..where((t) => t.sessionId.isIn(sessionIdQuery))).get();
+        for (final row in relatedAttendance) {
+          await _enqueueIfSupabaseIdNotNull(
+            tableName: 'attendance',
+            supabaseId: row.supabaseId,
+          );
+        }
         await (delete(
           attendance,
         )..where((t) => t.sessionId.isIn(sessionIdQuery))).go();
       }
 
       // Delete sessions for this subject.
+      final relatedSessions = await (select(
+        sessions,
+      )..where((tbl) => tbl.subjectId.equals(id))).get();
+      for (final row in relatedSessions) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'sessions',
+          supabaseId: row.supabaseId,
+        );
+      }
       await (delete(sessions)..where((tbl) => tbl.subjectId.equals(id))).go();
 
       // Delete schedules for this subject.
+      final relatedSchedules = await (select(
+        schedules,
+      )..where((tbl) => tbl.subjectId.equals(id))).get();
+      for (final row in relatedSchedules) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'schedules',
+          supabaseId: row.supabaseId,
+        );
+      }
       await (delete(schedules)..where((tbl) => tbl.subjectId.equals(id))).go();
 
       // Delete subject-student pivot rows for this subject.
+      final relatedSubjectStudents = await (select(
+        subjectStudents,
+      )..where((tbl) => tbl.subjectId.equals(id))).get();
+      for (final row in relatedSubjectStudents) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'subject_students',
+          supabaseId: row.supabaseId,
+        );
+      }
       await (delete(
         subjectStudents,
       )..where((tbl) => tbl.subjectId.equals(id))).go();
 
       // Finally delete the subject itself.
+      final subjectRow = await (select(
+        subjects,
+      )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+      if (subjectRow != null) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'subject_offerings',
+          supabaseId: subjectRow.supabaseId,
+        );
+      }
       await (delete(subjects)..where((tbl) => tbl.id.equals(id))).go();
     });
   }
@@ -467,7 +629,85 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Clears Supabase IDs and marks the subject and all related rows as
+  /// unsynced so that they will be uploaded as *new* records on the next sync.
+  /// This is used when a subject was deleted in the cloud from another device,
+  /// but still exists locally.
+  Future<void> resetSubjectGraphForResync(int subjectId) async {
+    await transaction(() async {
+      final now = DateTime.now();
+
+      // Reset the subject itself.
+      await (update(subjects)..where((tbl) => tbl.id.equals(subjectId))).write(
+        SubjectsCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
+
+      // Reset schedules for this subject.
+      await (update(
+        schedules,
+      )..where((tbl) => tbl.subjectId.equals(subjectId))).write(
+        SchedulesCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
+
+      // Reset sessions and remember their IDs so we can also reset attendance.
+      final subjectSessions = await (select(
+        sessions,
+      )..where((tbl) => tbl.subjectId.equals(subjectId))).get();
+      final sessionIds = subjectSessions.map((s) => s.id).toList();
+
+      await (update(
+        sessions,
+      )..where((tbl) => tbl.subjectId.equals(subjectId))).write(
+        SessionsCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
+
+      if (sessionIds.isNotEmpty) {
+        await (update(
+          attendance,
+        )..where((tbl) => tbl.sessionId.isIn(sessionIds))).write(
+          AttendanceCompanion(
+            supabaseId: const Value(null),
+            synced: const Value(false),
+            lastModified: Value(now),
+          ),
+        );
+      }
+
+      // Reset subject-student pivot rows.
+      await (update(
+        subjectStudents,
+      )..where((tbl) => tbl.subjectId.equals(subjectId))).write(
+        SubjectStudentsCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
+    });
+  }
+
   Future<void> deleteSchedulesBySubjectId(int subjectId) async {
+    final rows = await (select(
+      schedules,
+    )..where((tbl) => tbl.subjectId.equals(subjectId))).get();
+    for (final row in rows) {
+      await _enqueueIfSupabaseIdNotNull(
+        tableName: 'schedules',
+        supabaseId: row.supabaseId,
+      );
+    }
     await (delete(
       schedules,
     )..where((tbl) => tbl.subjectId.equals(subjectId))).go();
@@ -542,6 +782,26 @@ class AppDatabase extends _$AppDatabase {
       await delete(subjectStudents).go();
       await delete(subjects).go();
       await delete(students).go();
+      // Note: We intentionally do NOT enqueue deletions for this bulk-clear
+      // operation, since it is used for sign-out/local cache reset and should
+      // not wipe data from Supabase.
+    });
+  }
+
+  /// Clears all drift database data including deletion queue and terms.
+  /// TEMPORARY: For debugging purposes only.
+  Future<void> clearDriftDatabase() async {
+    await transaction(() async {
+      // Delete all data from all tables
+      // Order matters due to foreign key constraints
+      await delete(attendance).go();
+      await delete(sessions).go();
+      await delete(schedules).go();
+      await delete(subjectStudents).go();
+      await delete(subjects).go();
+      await delete(students).go();
+      await delete(terms).go();
+      await delete(deletionQueue).go();
     });
   }
 
@@ -555,6 +815,29 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteSessionById(int id) async {
+    // Enqueue deletion for the session itself and its attendance records.
+    final sessionRow = await (select(
+      sessions,
+    )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+    if (sessionRow != null) {
+      await _enqueueIfSupabaseIdNotNull(
+        tableName: 'sessions',
+        supabaseId: sessionRow.supabaseId,
+      );
+
+      final relatedAttendance = await (select(
+        attendance,
+      )..where((t) => t.sessionId.equals(id))).get();
+      for (final row in relatedAttendance) {
+        await _enqueueIfSupabaseIdNotNull(
+          tableName: 'attendance',
+          supabaseId: row.supabaseId,
+        );
+      }
+
+      await (delete(attendance)..where((t) => t.sessionId.equals(id))).go();
+    }
+
     await (delete(sessions)..where((tbl) => tbl.id.equals(id))).go();
   }
 
@@ -642,6 +925,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteSchedule(int scheduleId) async {
+    final scheduleRow = await (select(
+      schedules,
+    )..where((tbl) => tbl.id.equals(scheduleId))).getSingleOrNull();
+    if (scheduleRow != null) {
+      await _enqueueIfSupabaseIdNotNull(
+        tableName: 'schedules',
+        supabaseId: scheduleRow.supabaseId,
+      );
+    }
     await (delete(schedules)..where((tbl) => tbl.id.equals(scheduleId))).go();
   }
 
@@ -668,6 +960,32 @@ class AppDatabase extends _$AppDatabase {
       await (update(
         subjectStudents,
       )).write(SubjectStudentsCompanion(synced: const Value(false)));
+    });
+  }
+
+  /// Clears Supabase IDs and marks a student (and their enrollments) as
+  /// unsynced so they can be uploaded as a new record on the next sync.
+  Future<void> resetStudentGraphForResync(int studentId) async {
+    await transaction(() async {
+      final now = DateTime.now();
+
+      await (update(students)..where((tbl) => tbl.id.equals(studentId))).write(
+        StudentsCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
+
+      await (update(
+        subjectStudents,
+      )..where((tbl) => tbl.studentId.equals(studentId))).write(
+        SubjectStudentsCompanion(
+          supabaseId: const Value(null),
+          synced: const Value(false),
+          lastModified: Value(now),
+        ),
+      );
     });
   }
 }

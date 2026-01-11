@@ -88,8 +88,8 @@ class _LoginFormState extends State<LoginForm> {
             TextFormField(
               controller: _studentIDController,
               decoration: const InputDecoration(
-                labelText: 'Student ID',
-                prefixIcon: Icon(Icons.person),
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email),
                 border: OutlineInputBorder(),
               ),
             ),

@@ -35,39 +35,43 @@ class _StudentHomePageState extends State<StudentHomepage> {
   }
 
   Widget qrSection(QrDataProvider qrDataProvider) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.blueGrey.shade50),
-            ),
-            child: ToggleButtons(
-              isSelected: [
-                _mode == _StudentQrMode.show,
-                _mode == _StudentQrMode.scan,
-              ],
-              onPressed: (index) {
-                setState(() {
-                  _mode = _StudentQrMode.values[index];
-                });
-              },
-              fillColor: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(30),
-              children: const [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Text('Show QR'),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Text('Scan QR'),
-                ),
-              ],
+          Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.blueGrey.shade50),
+              ),
+              child: ToggleButtons(
+                isSelected: [
+                  _mode == _StudentQrMode.show,
+                  _mode == _StudentQrMode.scan,
+                ],
+                onPressed: (index) {
+                  setState(() {
+                    _mode = _StudentQrMode.values[index];
+                  });
+                },
+                fillColor: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(30),
+                constraints: const BoxConstraints(minWidth: 100, minHeight: 44),
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Text('Show QR'),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Text('Scan QR'),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -156,8 +160,10 @@ class _StudentHomePageState extends State<StudentHomepage> {
                       color: Colors.blue.shade50,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.qr_code_scanner,
-                        color: Colors.blue.shade700),
+                    child: Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.blue.shade700,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -217,9 +223,7 @@ class _StudentHomePageState extends State<StudentHomepage> {
               const SizedBox(width: 8),
               const Text(
                 'Session detected',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -262,18 +266,13 @@ class _SessionInfoRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
           ),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],

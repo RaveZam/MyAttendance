@@ -29,6 +29,24 @@ class SyncStatusResult {
   });
 }
 
+/// Thrown when a local row with a stored Supabase ID cannot be updated
+/// because the corresponding remote record no longer exists.
+class RemoteRecordMissingException implements Exception {
+  final String tableName;
+  final int localId;
+  final String supabaseId;
+
+  RemoteRecordMissingException({
+    required this.tableName,
+    required this.localId,
+    required this.supabaseId,
+  });
+
+  @override
+  String toString() =>
+      'RemoteRecordMissingException(table=$tableName, localId=$localId, supabaseId=$supabaseId)';
+}
+
 class SyncService {
   final AppDatabase db;
   final SupabaseClient supabase;
@@ -40,6 +58,9 @@ class SyncService {
   /// This method assumes the caller has already acquired the _isSyncing lock
   Future<void> _performUpload() async {
     debugPrint('🔄 Starting upload...');
+
+    // First, process any pending remote deletions.
+    await _processDeletionQueue();
 
     // Skip terms sync - terms are auto-created and never edited
     // final termsFuture = _syncTable(...);
@@ -346,10 +367,17 @@ class SyncService {
           }
         }
 
-        // Set the resolved UUID (keep local_subject_id as Supabase needs both)
-        if (subjectOfferingUuid != null) {
-          payload['subject_id'] = subjectOfferingUuid;
+        // CRITICAL: Skip this record if we couldn't resolve the subject_id
+        // This ensures we don't insert sessions with NULL subject_id
+        if (subjectOfferingUuid == null || subjectOfferingUuid.isEmpty) {
+          debugPrint(
+            '⚠️ Skipping session sync for local_id=$localId – subject_offering not found in Supabase for subject $localSubjectId. Ensure subject_offerings are synced first.',
+          );
+          continue;
         }
+
+        // Set the resolved UUID (keep local_subject_id as Supabase needs both)
+        payload['subject_id'] = subjectOfferingUuid;
         // Keep local_subject_id - Supabase schema requires both subject_id (UUID) and local_subject_id (int4)
       }
 
@@ -391,10 +419,17 @@ class SyncService {
           }
         }
 
-        // Set the resolved UUID (keep local_subject_id as Supabase needs both)
-        if (subjectOfferingUuid != null) {
-          payload['subject_id'] = subjectOfferingUuid;
+        // CRITICAL: Skip this record if we couldn't resolve the subject_id
+        // This ensures we don't insert schedules with NULL subject_id
+        if (subjectOfferingUuid == null || subjectOfferingUuid.isEmpty) {
+          debugPrint(
+            '⚠️ Skipping schedule sync for local_id=$localId – subject_offering not found in Supabase for subject $localSubjectId. Ensure subject_offerings are synced first.',
+          );
+          continue;
         }
+
+        // Set the resolved UUID (keep local_subject_id as Supabase needs both)
+        payload['subject_id'] = subjectOfferingUuid;
         // Keep local_subject_id - Supabase schema requires both subject_id (UUID) and local_subject_id (int4)
       }
 
@@ -435,10 +470,17 @@ class SyncService {
           }
         }
 
-        // Set the resolved UUID (keep local_session_id as Supabase needs both)
-        if (sessionUuid != null) {
-          payload['session_id'] = sessionUuid;
+        // CRITICAL: Skip this record if we couldn't resolve the session_id
+        // This ensures we don't insert attendance with NULL session_id
+        if (sessionUuid == null || sessionUuid.isEmpty) {
+          debugPrint(
+            '⚠️ Skipping attendance sync for local_id=$localId – session not found in Supabase for session $localSessionId. Ensure sessions are synced first.',
+          );
+          continue;
         }
+
+        // Set the resolved UUID (keep local_session_id as Supabase needs both)
+        payload['session_id'] = sessionUuid;
         // Keep local_session_id - Supabase schema requires both session_id (UUID) and local_session_id (int4)
       }
 
@@ -511,10 +553,30 @@ class SyncService {
           final updatePayload = Map<String, dynamic>.from(payload);
           updatePayload.remove('id');
 
-          await supabase
-              .from(tableName)
-              .update(updatePayload)
-              .eq('id', supabaseId);
+          if (tableName == 'subject_offerings') {
+            // For subjects, detect the case where the remote row was deleted
+            // (e.g. from another device). In that case, the update will affect
+            // zero rows, so we re-interpret this as a missing-remote conflict
+            // and let the UI decide whether to re-insert or delete locally.
+            final updated = await supabase
+                .from(tableName)
+                .update(updatePayload)
+                .eq('id', supabaseId)
+                .select('id, local_id');
+
+            if (updated.isEmpty) {
+              throw RemoteRecordMissingException(
+                tableName: tableName,
+                localId: localId,
+                supabaseId: supabaseId,
+              );
+            }
+          } else {
+            await supabase
+                .from(tableName)
+                .update(updatePayload)
+                .eq('id', supabaseId);
+          }
 
           // Mark this local record as synced again
           final ids = [localId];
@@ -528,7 +590,181 @@ class SyncService {
     } catch (e) {
       debugPrint('❌ FAILED to sync "$tableName".');
       debugPrint('⚠️ Error details: $e');
+
+      // Detect FK violations where a session points to a subject_offering
+      // that no longer exists in Supabase. This usually means the subject
+      // (and its offering) was deleted in the cloud from another device,
+      // but local sessions still reference it.
+      if (e is PostgrestException &&
+          e.code == '23503' &&
+          tableName == 'sessions') {
+        final details = e.details?.toString() ?? '';
+        if (details.contains('subject_id') &&
+            details.contains('"subject_offerings"')) {
+          Map<String, dynamic>? source;
+          if (toInsert.isNotEmpty) {
+            source = toInsert.first;
+          } else if (toUpdate.isNotEmpty) {
+            source = toUpdate.first;
+          }
+
+          if (source != null) {
+            final int? localSubjectId = source['local_subject_id'] as int?;
+            final String? subjectUuid = source['subject_id'] as String?;
+
+            if (localSubjectId != null) {
+              throw RemoteRecordMissingException(
+                tableName: 'subject_offerings',
+                localId: localSubjectId,
+                supabaseId: subjectUuid ?? '',
+              );
+            }
+          }
+        }
+      }
+
       rethrow;
+    }
+  }
+
+  /// Process all pending deletions in the local DeletionQueue table by issuing
+  /// DELETE operations against the corresponding Supabase tables.
+  /// After successful deletion, the queue entries are removed locally.
+  Future<void> _processDeletionQueue() async {
+    final items = await db.select(db.deletionQueue).get();
+    if (items.isEmpty) {
+      debugPrint('🧺 No pending deletions to sync.');
+      return;
+    }
+
+    debugPrint('🧺 Syncing ${items.length} pending deletions to Supabase...');
+
+    // Group items by table for batched deletes.
+    final Map<String, List<DeletionQueueData>> byTable = {};
+    for (final item in items) {
+      byTable.putIfAbsent(item.targetTable, () => []).add(item);
+    }
+
+    final List<int> successfullyProcessedIds = [];
+
+    Future<void> deleteForTable(
+      String tableName,
+      List<DeletionQueueData> tableItems, {
+      String idColumn = 'id',
+    }) async {
+      final ids = tableItems
+          .map((e) => e.supabaseId)
+          .where((id) => id.isNotEmpty)
+          .toList();
+      if (ids.isEmpty) return;
+
+      try {
+        await supabase.from(tableName).delete().inFilter(idColumn, ids);
+        successfullyProcessedIds.addAll(tableItems.map((e) => e.id));
+        debugPrint(
+          '🧺 Deleted ${tableItems.length} records from "$tableName" on Supabase.',
+        );
+      } catch (e) {
+        debugPrint(
+          '❌ Failed to delete ${tableItems.length} records from "$tableName" on Supabase: $e',
+        );
+      }
+    }
+
+    // Process in a safe order to avoid FK issues on Supabase.
+    if (byTable.containsKey('attendance')) {
+      await deleteForTable('attendance', byTable['attendance']!);
+    }
+    if (byTable.containsKey('subject_students')) {
+      await deleteForTable('subject_students', byTable['subject_students']!);
+    }
+    if (byTable.containsKey('schedules')) {
+      await deleteForTable('schedules', byTable['schedules']!);
+    }
+    if (byTable.containsKey('sessions')) {
+      await deleteForTable('sessions', byTable['sessions']!);
+    }
+    if (byTable.containsKey('subject_offerings')) {
+      final subjectItems = byTable['subject_offerings']!;
+      // Before deleting subject_offerings, also delete the corresponding
+      // students in Supabase that are enrolled in these offerings. We do
+      // this by using the subject_students table: for each subject_id,
+      // gather the associated student_id values and delete those rows
+      // from the Supabase "students" table.
+      try {
+        final subjectUuids = subjectItems
+            .map((e) => e.supabaseId)
+            .where((id) => id.isNotEmpty)
+            .toList();
+
+        if (subjectUuids.isNotEmpty) {
+          final subjectStudentRefs = await supabase
+              .from('subject_students')
+              .select('student_id')
+              .inFilter('subject_id', subjectUuids);
+
+          final Set<String> studentUuids = {};
+          for (final ref in subjectStudentRefs as List) {
+            final sid = ref['student_id'] as String?;
+            if (sid != null && sid.isNotEmpty) {
+              studentUuids.add(sid);
+            }
+          }
+
+          if (studentUuids.isNotEmpty) {
+            await supabase
+                .from('students')
+                .delete()
+                .inFilter('id', studentUuids.toList());
+            debugPrint(
+              '🧺 Also deleted ${studentUuids.length} students from Supabase linked to deleted subject_offerings.',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '⚠️ Failed to delete students linked to deleted subject_offerings: $e',
+        );
+      }
+
+      await deleteForTable('subject_offerings', subjectItems);
+    }
+    if (byTable.containsKey('students')) {
+      // For students, we delete by auth_id (stored in DeletionQueue.supabaseId).
+      await deleteForTable(
+        'students',
+        byTable['students']!,
+        idColumn: 'auth_id',
+      );
+    }
+
+    // Any other tables that might be queued but weren't explicitly ordered above.
+    for (final entry in byTable.entries) {
+      final tableName = entry.key;
+      if ([
+        'attendance',
+        'subject_students',
+        'schedules',
+        'sessions',
+        'subject_offerings',
+        'students',
+      ].contains(tableName)) {
+        continue;
+      }
+      await deleteForTable(tableName, entry.value);
+    }
+
+    if (successfullyProcessedIds.isNotEmpty) {
+      await (db.delete(
+        db.deletionQueue,
+      )..where((t) => t.id.isIn(successfullyProcessedIds))).go();
+      debugPrint(
+        '🧺 Cleared ${successfullyProcessedIds.length} entries from local DeletionQueue.',
+      );
+    } else {
+      debugPrint(
+        '🧺 No DeletionQueue entries were cleared (all deletes failed).',
+      );
     }
   }
 
@@ -593,9 +829,13 @@ class SyncService {
 
       if (remoteStudentId == null || remoteStudentId.isEmpty) {
         debugPrint(
-          '⚠️ Skipping subject_students row $localId - could not find remote student for local_id=$localStudentId',
+          '⚠️ Could not find remote student for local_id=$localStudentId – treating as missing remote record.',
         );
-        continue;
+        throw RemoteRecordMissingException(
+          tableName: 'students',
+          localId: localStudentId,
+          supabaseId: student?.supabaseId ?? '',
+        );
       }
 
       payloads.add({
@@ -644,6 +884,32 @@ class SyncService {
     } catch (e) {
       debugPrint('❌ FAILED to sync "subject_students" inserts.');
       debugPrint('⚠️ Error details: $e');
+
+      // Detect FK violations where the referenced subject_offering no longer
+      // exists in Supabase. This typically means the subject was deleted
+      // from another device, but local enrollments still point to it.
+      if (e is PostgrestException && e.code == '23503') {
+        final details = e.details?.toString() ?? '';
+        if (details.contains('subject_id') &&
+            details.contains('"subject_offerings"')) {
+          if (payloads.isNotEmpty) {
+            final first = payloads.first;
+            final localSubjectId = first['local_subject_id'] as int?;
+            final subjectUuid = first['subject_id'] as String?;
+
+            if (localSubjectId != null &&
+                subjectUuid != null &&
+                subjectUuid.isNotEmpty) {
+              throw RemoteRecordMissingException(
+                tableName: 'subject_offerings',
+                localId: localSubjectId,
+                supabaseId: subjectUuid,
+              );
+            }
+          }
+        }
+      }
+
       rethrow;
     }
   }
@@ -701,6 +967,7 @@ class SyncService {
   }
 
   /// Get the latest last_modified timestamp from Supabase for a table
+  /// Only includes records belonging to the current prof_id
   Future<DateTime?> _getServerLatestModified(String tableName) async {
     try {
       final profId = supabase.auth.currentUser?.id;
@@ -719,12 +986,111 @@ class SyncService {
         if (response != null && response['last_modified'] != null) {
           return DateTime.parse(response['last_modified']);
         }
-      } else if (tableName == 'schedules') {
-        // Get schedules for prof's subject offerings - query all schedules
-        // (schedules are filtered by subject_offerings relationship)
+      } else if (tableName == 'schedules' ||
+          tableName == 'sessions' ||
+          tableName == 'subject_students') {
+        // Get prof's subject offering UUIDs first
+        final subjectOfferings = await supabase
+            .from('subject_offerings')
+            .select('id')
+            .eq('prof_id', profId);
+
+        if (subjectOfferings.isEmpty) return null;
+
+        final offeringUuids = (subjectOfferings as List)
+            .map((so) => so['id'] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .toList();
+
+        if (offeringUuids.isEmpty) return null;
+
+        // Query the table filtered by subject_id matching prof's offerings
         final response = await supabase
             .from(tableName)
             .select('last_modified')
+            .inFilter('subject_id', offeringUuids)
+            .order('last_modified', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        if (response != null && response['last_modified'] != null) {
+          return DateTime.parse(response['last_modified']);
+        }
+      } else if (tableName == 'attendance') {
+        // Get prof's subject offering UUIDs first
+        final subjectOfferings = await supabase
+            .from('subject_offerings')
+            .select('id')
+            .eq('prof_id', profId);
+
+        if (subjectOfferings.isEmpty) return null;
+
+        final offeringUuids = (subjectOfferings as List)
+            .map((so) => so['id'] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .toList();
+
+        if (offeringUuids.isEmpty) return null;
+
+        // Get session UUIDs for these offerings
+        final sessions = await supabase
+            .from('sessions')
+            .select('id')
+            .inFilter('subject_id', offeringUuids);
+
+        final sessionUuids = (sessions as List)
+            .map((s) => s['id'] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .toList();
+
+        if (sessionUuids.isEmpty) return null;
+
+        // Get latest modified from attendance for these sessions
+        final response = await supabase
+            .from('attendance')
+            .select('last_modified')
+            .inFilter('session_id', sessionUuids)
+            .order('last_modified', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        if (response != null && response['last_modified'] != null) {
+          return DateTime.parse(response['last_modified']);
+        }
+      } else if (tableName == 'students') {
+        // For students, we need to check only those linked to this prof's subject offerings
+        // First get the prof's subject offering UUIDs
+        final subjectOfferings = await supabase
+            .from('subject_offerings')
+            .select('id')
+            .eq('prof_id', profId);
+
+        if (subjectOfferings.isEmpty) return null;
+
+        final offeringUuids = (subjectOfferings as List)
+            .map((so) => so['id'] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .toList();
+
+        if (offeringUuids.isEmpty) return null;
+
+        // Get student UUIDs enrolled in these offerings
+        final subjectStudentRefs = await supabase
+            .from('subject_students')
+            .select('student_id')
+            .inFilter('subject_id', offeringUuids);
+
+        final studentUuids = (subjectStudentRefs as List)
+            .map((ref) => ref['student_id'] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .toSet()
+            .toList();
+
+        if (studentUuids.isEmpty) return null;
+
+        // Get latest modified from these students
+        final response = await supabase
+            .from('students')
+            .select('last_modified')
+            .inFilter('id', studentUuids)
             .order('last_modified', ascending: false)
             .limit(1)
             .maybeSingle();
@@ -782,6 +1148,9 @@ class SyncService {
           return (await (db.select(
             db.subjectStudents,
           )..where((t) => t.synced.equals(false))).get()).length;
+        case 'deletion_queue':
+          // All rows in DeletionQueue represent pending changes.
+          return (await db.select(db.deletionQueue).get()).length;
         default:
           return 0;
       }
@@ -840,6 +1209,10 @@ class SyncService {
         }
       }
 
+      // Also include pending deletions in the overall "unsynced" count.
+      final deletionQueueCount = await _getUnsyncedCount('deletion_queue');
+      totalUnsynced += deletionQueueCount;
+
       // Determine status based on conditions:
       // 1. Local Newer: If local has unsynced records or newer timestamp
       // 2. Server Newer: If server has newer timestamp
@@ -863,6 +1236,9 @@ class SyncService {
         // Condition 1: Local has unsynced records
         status = SyncStatus.localNewer;
         message = 'Local changes found ($totalUnsynced records)';
+        if (deletionQueueCount > 0) {
+          message += ' including $deletionQueueCount pending deletions';
+        }
       } else if (serverIsNewer) {
         // Condition 2: Server is newer
         status = SyncStatus.serverNewer;
@@ -1171,13 +1547,20 @@ class SyncService {
         final remoteLocalId = s['local_id'] as int?;
         Student? local;
 
+        // Prefer strict matching by the canonical local_id used in
+        // Supabase subject_students.local_student_id. This keeps the
+        // IDs in Drift and Supabase aligned.
         if (remoteLocalId != null) {
           local = await (db.select(
             db.students,
           )..where((t) => t.id.equals(remoteLocalId))).getSingleOrNull();
         }
 
-        if (local == null) {
+        // Only fall back to matching by string studentId when the remote
+        // row doesn't carry a local_id (older data). When local_id IS
+        // present, we avoid fuzzy matching by studentId so that multiple
+        // students with the same studentId can still sync correctly by ID.
+        if (local == null && remoteLocalId == null) {
           final studentRows = await (db.select(
             db.students,
           )..where((t) => t.studentId.equals(s['student_id']))).get();

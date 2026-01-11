@@ -186,13 +186,17 @@ class _SubjectPageState extends State<SubjectPage> {
               (v) => setState(() => _selectedTermId = v),
               onClearFilter,
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddSubject,
-        child: const Icon(Icons.add),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: _scheduleData.isEmpty
+          ? null
+          : FloatingActionButton(
+              onPressed: _navigateToAddSubject,
+              child: const Icon(Icons.add),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(32),
+              ),
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+            ),
     );
   }
 

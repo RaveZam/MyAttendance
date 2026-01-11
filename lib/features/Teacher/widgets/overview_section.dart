@@ -166,7 +166,7 @@ class _OverviewSectionState extends State<OverviewSection> {
                         child: _CompactStatCard(
                           icon: Icons.calendar_today,
                           iconColor: Color(0xFF2563EB),
-                          label: 'Classes',
+                          label: 'Classes Conducted',
                           value: _classesCount.toString(),
                         ),
                       ),

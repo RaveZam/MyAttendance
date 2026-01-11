@@ -22,8 +22,6 @@ class _SettingsPageState extends State<SettingsPage> {
   String _lastSyncTime = 'Never';
   String _syncStatusMessage = 'Checking sync status...';
   SyncStatus? _currentSyncStatus;
-  bool _isClearingData = false;
-  bool _isMarkingUnsynced = false;
 
   @override
   void initState() {
@@ -33,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
     AppDatabase.instance.logAllSubjectsAndOfferings();
     AppDatabase.instance.logAllSubjectStudents();
     AppDatabase.instance.logAttendanceSessionScheduleCounts();
+    AppDatabase.instance.logDeletionQueue();
     _loadUserSettings();
     _checkSyncStatus();
   }
@@ -100,6 +99,15 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     } catch (e) {
+      // Special handling for "missing remote record" conflicts.
+      if (e is RemoteRecordMissingException) {
+        setState(() {
+          _isSyncing = false;
+        });
+        await _handleMissingRemoteRecord(e);
+        return;
+      }
+
       setState(() {
         _isSyncing = false;
       });
@@ -361,50 +369,6 @@ class _SettingsPageState extends State<SettingsPage> {
             _showAboutDialog();
           },
         ),
-        const Divider(),
-
-        // Temporary maintenance action: mark all rows unsynced
-        ListTile(
-          leading: const Icon(Icons.sync_problem, color: Colors.orange),
-          title: Text(
-            _isMarkingUnsynced
-                ? 'Marking all as unsynced…'
-                : 'Mark all data as unsynced (temp)',
-            style: TextStyle(color: Colors.orange.shade800),
-          ),
-          subtitle: const Text('Sets synced = false on all Drift tables'),
-          trailing: _isMarkingUnsynced
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.chevron_right, color: Colors.orange),
-          onTap: _isMarkingUnsynced ? null : _markAllAsUnsynced,
-          contentPadding: EdgeInsets.zero,
-        ),
-        const Divider(),
-
-        // Temporary maintenance action: clear all local Drift data
-        ListTile(
-          leading: const Icon(Icons.delete_forever, color: Colors.red),
-          title: Text(
-            _isClearingData
-                ? 'Clearing local data…'
-                : 'Clear local data (temp)',
-            style: TextStyle(color: Colors.red.shade700),
-          ),
-          subtitle: const Text('Removes all cached Drift tables'),
-          trailing: _isClearingData
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.chevron_right, color: Colors.red),
-          onTap: _isClearingData ? null : _confirmClearLocalData,
-          contentPadding: EdgeInsets.zero,
-        ),
       ],
     );
   }
@@ -527,84 +491,82 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> _confirmClearLocalData() async {
-    final shouldProceed = await showDialog<bool>(
+  /// Handles cases where a record was deleted from the cloud on another device
+  /// but still exists locally. Prompts the user to either re-sync it as a new
+  /// record or delete it locally.
+  Future<void> _handleMissingRemoteRecord(
+    RemoteRecordMissingException exception,
+  ) async {
+    final localId = exception.localId;
+
+    String title;
+    String description;
+
+    if (exception.tableName == 'subject_offerings') {
+      title = 'Subject not found in cloud';
+      description =
+          'This subject appears to have been deleted from another device.\n\n'
+          'Would you like to sync it again to the cloud as a new subject, '
+          'or delete it locally?';
+    } else if (exception.tableName == 'students') {
+      title = 'Student not found in cloud';
+      description =
+          'This student appears to have been deleted from another device.\n\n'
+          'Would you like to sync it again to the cloud as a new student, '
+          'or delete it locally (including related data)?';
+    } else {
+      title = 'Record not found in cloud';
+      description =
+          'This record appears to have been deleted from another device.\n\n'
+          'Would you like to sync it again to the cloud as a new record, '
+          'or delete it locally?';
+    }
+
+    final choice = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear all local data?'),
-        content: const Text(
-          'This will remove all Drift tables (subjects, schedules, sessions, attendance, students, and links).',
-        ),
+        title: Text(title),
+        content: Text(description),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop('delete'),
+            child: const Text('Delete locally'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            onPressed: () => Navigator.of(context).pop('resync'),
+            child: const Text('Sync again'),
           ),
         ],
       ),
     );
 
-    if (shouldProceed != true) return;
+    if (!mounted || choice == null) return;
 
-    setState(() => _isClearingData = true);
-    try {
-      await AppDatabase.instance.clearAllDatabaseData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Local data cleared.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
+    if (choice == 'resync') {
+      if (exception.tableName == 'subject_offerings') {
+        await AppDatabase.instance.resetSubjectGraphForResync(localId);
+      } else if (exception.tableName == 'students') {
+        await AppDatabase.instance.resetStudentGraphForResync(localId);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to clear data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isClearingData = false);
-      }
-    }
-  }
 
-  Future<void> _markAllAsUnsynced() async {
-    setState(() => _isMarkingUnsynced = true);
-    try {
-      await AppDatabase.instance.markAllDataUnsynced();
+      // Re-run sync to push the fresh records.
+      await _handleSync();
+    } else if (choice == 'delete') {
+      if (exception.tableName == 'subject_offerings') {
+        await AppDatabase.instance.deleteSubject(localId);
+      } else if (exception.tableName == 'students') {
+        await AppDatabase.instance.deleteStudentWithRelations(localId);
+      }
+
       await _checkSyncStatus();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All local rows marked as unsynced.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to mark as unsynced: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isMarkingUnsynced = false);
-      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Record deleted locally.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 }

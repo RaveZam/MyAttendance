@@ -3628,6 +3628,373 @@ class AttendanceCompanion extends UpdateCompanion<AttendanceData> {
   }
 }
 
+class $DeletionQueueTable extends DeletionQueue
+    with TableInfo<$DeletionQueueTable, DeletionQueueData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeletionQueueTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _targetTableMeta = const VerificationMeta(
+    'targetTable',
+  );
+  @override
+  late final GeneratedColumn<String> targetTable = GeneratedColumn<String>(
+    'target_table',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _supabaseIdMeta = const VerificationMeta(
+    'supabaseId',
+  );
+  @override
+  late final GeneratedColumn<String> supabaseId = GeneratedColumn<String>(
+    'supabase_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    targetTable,
+    supabaseId,
+    synced,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'deletion_queue';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeletionQueueData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('target_table')) {
+      context.handle(
+        _targetTableMeta,
+        targetTable.isAcceptableOrUnknown(
+          data['target_table']!,
+          _targetTableMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetTableMeta);
+    }
+    if (data.containsKey('supabase_id')) {
+      context.handle(
+        _supabaseIdMeta,
+        supabaseId.isAcceptableOrUnknown(data['supabase_id']!, _supabaseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_supabaseIdMeta);
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeletionQueueData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeletionQueueData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      targetTable: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_table'],
+      )!,
+      supabaseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}supabase_id'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeletionQueueTable createAlias(String alias) {
+    return $DeletionQueueTable(attachedDatabase, alias);
+  }
+}
+
+class DeletionQueueData extends DataClass
+    implements Insertable<DeletionQueueData> {
+  final int id;
+
+  /// Supabase table name, e.g. "students", "subject_offerings",
+  /// "schedules", "sessions", "attendance", "subject_students".
+  final String targetTable;
+
+  /// Identifier used when deleting on Supabase.
+  /// For most tables this is the remote PK "id".
+  /// For "students" we use the remote "auth_id" (taken from local Students.supabaseId).
+  final String supabaseId;
+
+  /// Not currently used in logic, but kept for consistency with other tables.
+  final bool synced;
+  final DateTime createdAt;
+  const DeletionQueueData({
+    required this.id,
+    required this.targetTable,
+    required this.supabaseId,
+    required this.synced,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['target_table'] = Variable<String>(targetTable);
+    map['supabase_id'] = Variable<String>(supabaseId);
+    map['synced'] = Variable<bool>(synced);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DeletionQueueCompanion toCompanion(bool nullToAbsent) {
+    return DeletionQueueCompanion(
+      id: Value(id),
+      targetTable: Value(targetTable),
+      supabaseId: Value(supabaseId),
+      synced: Value(synced),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DeletionQueueData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeletionQueueData(
+      id: serializer.fromJson<int>(json['id']),
+      targetTable: serializer.fromJson<String>(json['targetTable']),
+      supabaseId: serializer.fromJson<String>(json['supabaseId']),
+      synced: serializer.fromJson<bool>(json['synced']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'targetTable': serializer.toJson<String>(targetTable),
+      'supabaseId': serializer.toJson<String>(supabaseId),
+      'synced': serializer.toJson<bool>(synced),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DeletionQueueData copyWith({
+    int? id,
+    String? targetTable,
+    String? supabaseId,
+    bool? synced,
+    DateTime? createdAt,
+  }) => DeletionQueueData(
+    id: id ?? this.id,
+    targetTable: targetTable ?? this.targetTable,
+    supabaseId: supabaseId ?? this.supabaseId,
+    synced: synced ?? this.synced,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DeletionQueueData copyWithCompanion(DeletionQueueCompanion data) {
+    return DeletionQueueData(
+      id: data.id.present ? data.id.value : this.id,
+      targetTable: data.targetTable.present
+          ? data.targetTable.value
+          : this.targetTable,
+      supabaseId: data.supabaseId.present
+          ? data.supabaseId.value
+          : this.supabaseId,
+      synced: data.synced.present ? data.synced.value : this.synced,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletionQueueData(')
+          ..write('id: $id, ')
+          ..write('targetTable: $targetTable, ')
+          ..write('supabaseId: $supabaseId, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, targetTable, supabaseId, synced, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeletionQueueData &&
+          other.id == this.id &&
+          other.targetTable == this.targetTable &&
+          other.supabaseId == this.supabaseId &&
+          other.synced == this.synced &&
+          other.createdAt == this.createdAt);
+}
+
+class DeletionQueueCompanion extends UpdateCompanion<DeletionQueueData> {
+  final Value<int> id;
+  final Value<String> targetTable;
+  final Value<String> supabaseId;
+  final Value<bool> synced;
+  final Value<DateTime> createdAt;
+  const DeletionQueueCompanion({
+    this.id = const Value.absent(),
+    this.targetTable = const Value.absent(),
+    this.supabaseId = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DeletionQueueCompanion.insert({
+    this.id = const Value.absent(),
+    required String targetTable,
+    required String supabaseId,
+    this.synced = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : targetTable = Value(targetTable),
+       supabaseId = Value(supabaseId);
+  static Insertable<DeletionQueueData> custom({
+    Expression<int>? id,
+    Expression<String>? targetTable,
+    Expression<String>? supabaseId,
+    Expression<bool>? synced,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (targetTable != null) 'target_table': targetTable,
+      if (supabaseId != null) 'supabase_id': supabaseId,
+      if (synced != null) 'synced': synced,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DeletionQueueCompanion copyWith({
+    Value<int>? id,
+    Value<String>? targetTable,
+    Value<String>? supabaseId,
+    Value<bool>? synced,
+    Value<DateTime>? createdAt,
+  }) {
+    return DeletionQueueCompanion(
+      id: id ?? this.id,
+      targetTable: targetTable ?? this.targetTable,
+      supabaseId: supabaseId ?? this.supabaseId,
+      synced: synced ?? this.synced,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (targetTable.present) {
+      map['target_table'] = Variable<String>(targetTable.value);
+    }
+    if (supabaseId.present) {
+      map['supabase_id'] = Variable<String>(supabaseId.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeletionQueueCompanion(')
+          ..write('id: $id, ')
+          ..write('targetTable: $targetTable, ')
+          ..write('supabaseId: $supabaseId, ')
+          ..write('synced: $synced, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3640,6 +4007,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $SessionsTable sessions = $SessionsTable(this);
   late final $AttendanceTable attendance = $AttendanceTable(this);
+  late final $DeletionQueueTable deletionQueue = $DeletionQueueTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3652,6 +4020,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     subjectStudents,
     sessions,
     attendance,
+    deletionQueue,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -6793,6 +7162,208 @@ typedef $$AttendanceTableProcessedTableManager =
       AttendanceData,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$DeletionQueueTableCreateCompanionBuilder =
+    DeletionQueueCompanion Function({
+      Value<int> id,
+      required String targetTable,
+      required String supabaseId,
+      Value<bool> synced,
+      Value<DateTime> createdAt,
+    });
+typedef $$DeletionQueueTableUpdateCompanionBuilder =
+    DeletionQueueCompanion Function({
+      Value<int> id,
+      Value<String> targetTable,
+      Value<String> supabaseId,
+      Value<bool> synced,
+      Value<DateTime> createdAt,
+    });
+
+class $$DeletionQueueTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletionQueueTable> {
+  $$DeletionQueueTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeletionQueueTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletionQueueTable> {
+  $$DeletionQueueTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeletionQueueTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletionQueueTable> {
+  $$DeletionQueueTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get targetTable => $composableBuilder(
+    column: $table.targetTable,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get supabaseId => $composableBuilder(
+    column: $table.supabaseId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DeletionQueueTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeletionQueueTable,
+          DeletionQueueData,
+          $$DeletionQueueTableFilterComposer,
+          $$DeletionQueueTableOrderingComposer,
+          $$DeletionQueueTableAnnotationComposer,
+          $$DeletionQueueTableCreateCompanionBuilder,
+          $$DeletionQueueTableUpdateCompanionBuilder,
+          (
+            DeletionQueueData,
+            BaseReferences<
+              _$AppDatabase,
+              $DeletionQueueTable,
+              DeletionQueueData
+            >,
+          ),
+          DeletionQueueData,
+          PrefetchHooks Function()
+        > {
+  $$DeletionQueueTableTableManager(_$AppDatabase db, $DeletionQueueTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeletionQueueTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletionQueueTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeletionQueueTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> targetTable = const Value.absent(),
+                Value<String> supabaseId = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DeletionQueueCompanion(
+                id: id,
+                targetTable: targetTable,
+                supabaseId: supabaseId,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String targetTable,
+                required String supabaseId,
+                Value<bool> synced = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DeletionQueueCompanion.insert(
+                id: id,
+                targetTable: targetTable,
+                supabaseId: supabaseId,
+                synced: synced,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeletionQueueTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeletionQueueTable,
+      DeletionQueueData,
+      $$DeletionQueueTableFilterComposer,
+      $$DeletionQueueTableOrderingComposer,
+      $$DeletionQueueTableAnnotationComposer,
+      $$DeletionQueueTableCreateCompanionBuilder,
+      $$DeletionQueueTableUpdateCompanionBuilder,
+      (
+        DeletionQueueData,
+        BaseReferences<_$AppDatabase, $DeletionQueueTable, DeletionQueueData>,
+      ),
+      DeletionQueueData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6811,4 +7382,6 @@ class $AppDatabaseManager {
       $$SessionsTableTableManager(_db, _db.sessions);
   $$AttendanceTableTableManager get attendance =>
       $$AttendanceTableTableManager(_db, _db.attendance);
+  $$DeletionQueueTableTableManager get deletionQueue =>
+      $$DeletionQueueTableTableManager(_db, _db.deletionQueue);
 }

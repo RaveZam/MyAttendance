@@ -657,6 +657,94 @@ class _AttendancePageState extends State<AttendancePage> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: scheme.primary,
+                              foregroundColor: scheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (_selectedStudent == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select a student first.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final alreadyPresent = _attendance.any(
+                                (a) =>
+                                    a.studentId == _selectedStudent!.studentId,
+                              );
+
+                              if (alreadyPresent) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'This student is already marked as present.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              try {
+                                await AppDatabase.instance.insertAttendance(
+                                  AttendanceCompanion.insert(
+                                    studentId: _selectedStudent!.studentId,
+                                    sessionId: int.parse(widget.sessionID),
+                                    status: 'present',
+                                    synced: false,
+                                  ),
+                                );
+
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Marked ${_selectedStudent!.firstName} ${_selectedStudent!.lastName} as present.',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+
+                                // Refresh attendance summary and list
+                                _loadAttendance();
+                              } catch (e) {
+                                debugPrint(
+                                  'Error marking student as present manually: $e',
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Failed to mark student as present.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text(
+                              'Mark As Present',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -784,6 +872,7 @@ class _AttendancePageState extends State<AttendancePage> {
       ),
     );
   }
+
   Widget _buildBleMethodCard(ColorScheme scheme) {
     final classData = _buildBleClassData();
     final qrPayload = jsonEncode(classData);
@@ -890,14 +979,15 @@ class _AttendancePageState extends State<AttendancePage> {
     final session = sessionDetails;
     final sessionStart = session?.startTime;
     final sessionEnd = session?.endTime;
-    final day =
-        sessionStart != null ? DateFormat('EEEE').format(sessionStart) : '';
+    final day = sessionStart != null
+        ? DateFormat('EEEE').format(sessionStart)
+        : '';
     final timeFormat = DateFormat('h:mm a');
 
-    final startTime =
-        sessionStart != null ? timeFormat.format(sessionStart) : '-';
-    final endTime =
-        sessionEnd != null ? timeFormat.format(sessionEnd) : '';
+    final startTime = sessionStart != null
+        ? timeFormat.format(sessionStart)
+        : '-';
+    final endTime = sessionEnd != null ? timeFormat.format(sessionEnd) : '';
 
     final sessionIdentifier = (sessionDetails?.supabaseId ?? '').isNotEmpty
         ? sessionDetails!.supabaseId!
@@ -915,7 +1005,6 @@ class _AttendancePageState extends State<AttendancePage> {
       "day": day,
     };
   }
-
 }
 
 class _MethodCard extends StatelessWidget {

@@ -38,9 +38,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             child: Column(
               children: [
                 OverviewSection(),
-                ChartComparison(),
                 DisplayCurrentClass(),
                 DisplayNextClass(),
+                ChartComparison(),
 
                 // Container(
                 //   padding: const EdgeInsets.all(16),

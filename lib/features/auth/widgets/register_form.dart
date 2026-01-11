@@ -137,16 +137,16 @@ class _RegisterFormState extends State<RegisterForm> {
               TextFormField(
                 controller: _studentIDController,
                 decoration: const InputDecoration(
-                  labelText: 'Student ID',
-                  prefixIcon: Icon(Icons.person),
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your Student ID';
+                    return 'Please enter your Email';
                   }
                   if (value.length < 3) {
-                    return 'Student ID must be at least 3 characters';
+                    return 'Email must be at least 3 characters';
                   }
                   return null;
                 },

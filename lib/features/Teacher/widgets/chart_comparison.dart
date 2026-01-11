@@ -15,6 +15,7 @@ class ChartComparison extends StatefulWidget {
 class _ChartComparisonState extends State<ChartComparison> {
   final List<int> _presentCounts = [];
   final List<int> _absentCounts = [];
+  final List<int> _totalCounts = [];
   final List<String> _dayLabels = [];
   final List<DateTime> _dayDates = [];
   double _maxValue = 0;
@@ -56,6 +57,7 @@ class _ChartComparisonState extends State<ChartComparison> {
 
       _presentCounts.clear();
       _absentCounts.clear();
+      _totalCounts.clear();
       _dayLabels.clear();
       _dayDates.clear();
       _maxValue = 0;
@@ -85,11 +87,17 @@ class _ChartComparisonState extends State<ChartComparison> {
             .where((a) => a.status.toLowerCase() == 'absent')
             .length;
 
+        final totalCount = presentCount + absentCount;
+
         _presentCounts.add(presentCount);
         _absentCounts.add(absentCount);
+        _totalCounts.add(totalCount);
         _dayLabels.add(DateFormat.E().format(day));
         _dayDates.add(day);
-        _maxValue = max(_maxValue, max(presentCount, absentCount).toDouble());
+        _maxValue = max(
+          _maxValue,
+          max(max(presentCount, absentCount), totalCount).toDouble(),
+        );
       }
 
       if (_maxValue < 5) {
@@ -143,164 +151,243 @@ class _ChartComparisonState extends State<ChartComparison> {
                 )
               : SizedBox(
                   height: 150,
-                  child: BarChart(
-                    BarChartData(
-                      minY: 0,
-                      maxY: max(_maxValue, 5),
-                      gridData: FlGridData(
-                        show: true,
-                        horizontalInterval: max(
-                          1,
-                          (_maxValue / 5).clamp(1, 10),
-                        ),
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) => FlLine(
-                          color: Colors.grey.withOpacity(0.2),
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          axisNameSize: 22,
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 32,
-                            getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
-                              final label =
-                                  index >= 0 && index < _dayLabels.length
-                                  ? _dayLabels[index]
-                                  : '';
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  label,
-                                  style: TextStyle(
-                                    color: scheme.onSurface.withOpacity(0.7),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: max(
+                  child: Stack(
+                    children: [
+                      // Bar Chart
+                      BarChart(
+                        BarChartData(
+                          minY: 0,
+                          maxY: max(_maxValue, 5),
+                          gridData: FlGridData(
+                            show: true,
+                            horizontalInterval: max(
                               1,
-                              (_maxValue / 4).clamp(1, double.infinity),
+                              (_maxValue / 5).clamp(1, 10),
                             ),
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                value.toInt().toString(),
-                                style: TextStyle(
-                                  color: scheme.onSurface.withOpacity(0.6),
-                                  fontSize: 10,
-                                ),
-                              );
-                            },
-                            reservedSize: 32,
+                            drawVerticalLine: false,
+                            getDrawingHorizontalLine: (value) => FlLine(
+                              color: Colors.grey.withOpacity(0.2),
+                              strokeWidth: 1,
+                            ),
                           ),
-                        ),
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: List.generate(_dayLabels.length, (index) {
-                        return BarChartGroupData(
-                          x: index,
-                          groupVertically: false,
-                          barsSpace: 4,
-                          barRods: [
-                            BarChartRodData(
-                              toY: index < _presentCounts.length
-                                  ? _presentCounts[index].toDouble()
-                                  : 0,
-                              color: scheme.primary,
-                              width: 12,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(4),
-                                topRight: Radius.circular(4),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              axisNameSize: 22,
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 32,
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.toInt();
+                                  final label =
+                                      index >= 0 && index < _dayLabels.length
+                                      ? _dayLabels[index]
+                                      : '';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: scheme.onSurface.withOpacity(
+                                          0.7,
+                                        ),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                            BarChartRodData(
-                              toY: index < _absentCounts.length
-                                  ? _absentCounts[index].toDouble()
-                                  : 0,
-                              color: Colors.red.shade700,
-                              width: 12,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(4),
-                                topRight: Radius.circular(4),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: max(
+                                  1,
+                                  (_maxValue / 4).clamp(1, double.infinity),
+                                ),
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: TextStyle(
+                                      color: scheme.onSurface.withOpacity(0.6),
+                                      fontSize: 10,
+                                    ),
+                                  );
+                                },
+                                reservedSize: 32,
                               ),
                             ),
-                          ],
-                        );
-                      }),
-                      groupsSpace: 8,
-                      barTouchData: BarTouchData(
-                        enabled: true,
-                        touchTooltipData: BarTouchTooltipData(
-                          getTooltipColor: (group) => Colors.white,
-                          tooltipRoundedRadius: 8,
-                          tooltipPadding: const EdgeInsets.all(8),
-                          tooltipMargin: 8,
-                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final index = group.x.toInt();
-                            final present = index < _presentCounts.length
-                                ? _presentCounts[index]
-                                : 0;
-                            final absent = index < _absentCounts.length
-                                ? _absentCounts[index]
-                                : 0;
-
-                            return BarTooltipItem(
-                              '',
-                              const TextStyle(),
-                              children: [
-                                TextSpan(
-                                  text: 'Present: ',
-                                  style: TextStyle(
-                                    color: scheme.primary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(_dayLabels.length, (index) {
+                            return BarChartGroupData(
+                              x: index,
+                              groupVertically: false,
+                              barsSpace: 4,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: index < _presentCounts.length
+                                      ? _presentCounts[index].toDouble()
+                                      : 0,
+                                  color: scheme.primary,
+                                  width: 12,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(4),
+                                    topRight: Radius.circular(4),
                                   ),
                                 ),
-                                TextSpan(
-                                  text: '$present\n',
-                                  style: TextStyle(
-                                    color: scheme.primary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: 'Absent: ',
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: '$absent',
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                BarChartRodData(
+                                  toY: index < _absentCounts.length
+                                      ? _absentCounts[index].toDouble()
+                                      : 0,
+                                  color: Colors.red.shade700,
+                                  width: 12,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(4),
+                                    topRight: Radius.circular(4),
                                   ),
                                 ),
                               ],
                             );
-                          },
+                          }),
+                          groupsSpace: 8,
+                          barTouchData: BarTouchData(
+                            enabled: true,
+                            touchTooltipData: BarTouchTooltipData(
+                              getTooltipColor: (group) => Colors.white,
+                              tooltipRoundedRadius: 8,
+                              tooltipPadding: const EdgeInsets.all(8),
+                              tooltipMargin: 8,
+                              getTooltipItem:
+                                  (group, groupIndex, rod, rodIndex) {
+                                    final index = group.x.toInt();
+                                    final present =
+                                        index < _presentCounts.length
+                                        ? _presentCounts[index]
+                                        : 0;
+                                    final absent = index < _absentCounts.length
+                                        ? _absentCounts[index]
+                                        : 0;
+                                    final total = index < _totalCounts.length
+                                        ? _totalCounts[index]
+                                        : 0;
+
+                                    return BarTooltipItem(
+                                      '',
+                                      const TextStyle(),
+                                      children: [
+                                        TextSpan(
+                                          text: 'Total: ',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: '$total\n',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'Present: ',
+                                          style: TextStyle(
+                                            color: scheme.primary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: '$present\n',
+                                          style: TextStyle(
+                                            color: scheme.primary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: 'Absent: ',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: '$absent',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      // Line Chart overlay
+                      LineChart(
+                        LineChartData(
+                          minY: 0,
+                          maxY: max(_maxValue, 5),
+                          gridData: FlGridData(show: false),
+                          titlesData: FlTitlesData(show: false),
+                          borderData: FlBorderData(show: false),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: List.generate(_dayLabels.length, (index) {
+                                final total = index < _totalCounts.length
+                                    ? _totalCounts[index].toDouble()
+                                    : 0.0;
+                                return FlSpot(index.toDouble(), total);
+                              }),
+                              isCurved: false,
+                              color: Colors.orange.shade700,
+                              barWidth: 2,
+                              dotData: FlDotData(show: false),
+                              belowBarData: BarAreaData(show: false),
+                            ),
+                          ],
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (touchedSpot) => Colors.white,
+                              tooltipRoundedRadius: 8,
+                              tooltipPadding: const EdgeInsets.all(8),
+                              tooltipMargin: 8,
+                              getTooltipItems:
+                                  (List<LineBarSpot> touchedBarSpots) {
+                                    return touchedBarSpots.map((barSpot) {
+                                      final index = barSpot.x.toInt();
+                                      final total = index < _totalCounts.length
+                                          ? _totalCounts[index]
+                                          : 0;
+                                      return LineTooltipItem(
+                                        'Total: $total',
+                                        TextStyle(
+                                          color: Colors.orange.shade700,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
           const SizedBox(height: 12),
@@ -309,6 +396,8 @@ class _ChartComparisonState extends State<ChartComparison> {
               _LegendDot(color: scheme.primary, label: 'Present'),
               const SizedBox(width: 16),
               _LegendDot(color: Colors.red.shade700, label: 'Absent'),
+              const SizedBox(width: 16),
+              _LegendLine(color: Colors.orange.shade700, label: 'Total'),
             ],
           ),
         ],
@@ -333,6 +422,37 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendLine extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendLine({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 3,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 6),
